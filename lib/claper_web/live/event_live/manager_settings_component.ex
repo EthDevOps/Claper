@@ -11,7 +11,7 @@ defmodule ClaperWeb.EventLive.ManagerSettingsComponent do
       |> assign_new(:scope_id, fn -> assigns[:id] || "settings" end)
 
     ~H"""
-    <div class="grid grid-cols-1 @md:grid-cols-2 @md:space-x-5 px-5 py-3 h-full mb-10">
+    <div class="grid grid-cols-1 @md:grid-cols-2 @md:space-x-5 px-5 py-3 mb-10">
       <div>
         <div class="flex items-center space-x-2 font-semibold text-lg">
           <svg
@@ -450,6 +450,55 @@ defmodule ClaperWeb.EventLive.ManagerSettingsComponent do
               </svg>
 
               <span>{gettext("Attendees")}</span>
+            </div>
+
+            <div :if={@event} class="flex space-x-2 items-center">
+              <ClaperWeb.Component.Input.check_button
+                key={:authed_only}
+                checked={@event.authed_only}
+              >
+                <svg
+                  :if={!@event.authed_only}
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  class="w-5 h-5"
+                >
+                  <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+                  <path d="M5 13a2 2 0 0 1 2 -2h10a2 2 0 0 1 2 2v6a2 2 0 0 1 -2 2h-10a2 2 0 0 1 -2 -2v-6z" />
+                  <path d="M11 16a1 1 0 1 0 2 0a1 1 0 0 0 -2 0" />
+                  <path d="M8 11v-4a4 4 0 1 1 8 0" />
+                </svg>
+                <svg
+                  :if={@event.authed_only}
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  class="w-5 h-5"
+                >
+                  <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+                  <path d="M5 13a2 2 0 0 1 2 -2h10a2 2 0 0 1 2 2v6a2 2 0 0 1 -2 2h-10a2 2 0 0 1 -2 -2v-6z" />
+                  <path d="M11 16a1 1 0 1 0 2 0a1 1 0 0 0 -2 0" />
+                  <path d="M8 11v-5a4 4 0 0 1 8 0v5" />
+                </svg>
+                <div>
+                  <span :if={!@event.authed_only}>
+                    {gettext("Require login to join")}
+                  </span>
+                  <span :if={@event.authed_only}>
+                    {gettext("Allow anyone with the code")}
+                  </span>
+                </div>
+                <div></div>
+              </ClaperWeb.Component.Input.check_button>
             </div>
 
             <div class="flex space-x-2 items-center">

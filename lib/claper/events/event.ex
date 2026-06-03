@@ -10,6 +10,7 @@ defmodule Claper.Events.Event do
           audience_peak: integer() | nil,
           started_at: NaiveDateTime.t(),
           expired_at: NaiveDateTime.t() | nil,
+          authed_only: boolean(),
           reactions: [Claper.Events.ReactionConfig.t()] | nil,
           posts: [Claper.Posts.Post.t()] | nil,
           leaders: [Claper.Events.ActivityLeader.t()] | nil,
@@ -37,6 +38,7 @@ defmodule Claper.Events.Event do
     field :audience_peak, :integer, default: 0
     field :started_at, :naive_datetime
     field :expired_at, :naive_datetime
+    field :authed_only, :boolean, default: false
 
     embeds_many :reactions, Claper.Events.ReactionConfig, on_replace: :delete
 
@@ -60,6 +62,7 @@ defmodule Claper.Events.Event do
       :started_at,
       :expired_at,
       :audience_peak,
+      :authed_only,
       :user_id
     ])
     |> cast_embed(:reactions, with: &Claper.Events.ReactionConfig.changeset/2)
@@ -104,7 +107,15 @@ defmodule Claper.Events.Event do
 
   def update_changeset(event, attrs) do
     event
-    |> cast(attrs, [:name, :code, :started_at, :expired_at, :audience_peak, :user_id])
+    |> cast(attrs, [
+      :name,
+      :code,
+      :started_at,
+      :expired_at,
+      :audience_peak,
+      :authed_only,
+      :user_id
+    ])
     |> cast_embed(:reactions, with: &Claper.Events.ReactionConfig.changeset/2)
     |> cast_assoc(:presentation_file)
     |> cast_assoc(:leaders)
