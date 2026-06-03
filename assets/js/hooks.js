@@ -1,6 +1,60 @@
 // LiveView hooks for client-side functionality
 
 const Hooks = {
+  // Toggles an emoji picker popup and pushes "add-reaction" with the chosen
+  // emoji to the LiveView. The container element must include:
+  //   [data-emoji-picker-toggle] — the trigger button
+  //   [data-emoji-picker-popup]  — the empty popup container
+  EmojiPicker: {
+    mounted() {
+      const toggle = this.el.querySelector("[data-emoji-picker-toggle]");
+      const popup = this.el.querySelector("[data-emoji-picker-popup]");
+      if (!toggle || !popup) return;
+
+      let picker = null;
+
+      const close = () => {
+        popup.classList.add("hidden");
+      };
+
+      const open = async () => {
+        if (!picker) {
+          await import("emoji-picker-element");
+          picker = document.createElement("emoji-picker");
+          picker.style.setProperty("--background", "white");
+          picker.style.setProperty("height", "350px");
+          picker.addEventListener("emoji-click", (event) => {
+            const emoji = event.detail.unicode;
+            this.pushEvent("add-reaction", { emoji });
+            close();
+          });
+          popup.appendChild(picker);
+        }
+        popup.classList.remove("hidden");
+      };
+
+      this._onToggleClick = (event) => {
+        event.stopPropagation();
+        if (popup.classList.contains("hidden")) {
+          open();
+        } else {
+          close();
+        }
+      };
+
+      this._onDocClick = (event) => {
+        if (!this.el.contains(event.target)) close();
+      };
+
+      toggle.addEventListener("click", this._onToggleClick);
+      document.addEventListener("click", this._onDocClick);
+    },
+
+    destroyed() {
+      document.removeEventListener("click", this._onDocClick);
+    },
+  },
+
   // Hook for handling CSV downloads from LiveView
   CSVDownloader: {
     mounted() {

@@ -1,8 +1,14 @@
 defmodule ClaperWeb.EventLive.ManagerSettingsComponent do
   use ClaperWeb, :live_component
 
+  alias Claper.Events.Event
+
   def render(assigns) do
-    assigns = assigns |> assign_new(:show_shortcut, fn -> true end)
+    assigns =
+      assigns
+      |> assign_new(:show_shortcut, fn -> true end)
+      |> assign_new(:event, fn -> nil end)
+      |> assign_new(:scope_id, fn -> assigns[:id] || "settings" end)
 
     ~H"""
     <div class="grid grid-cols-1 @md:grid-cols-2 @md:space-x-5 px-5 py-3 h-full mb-10">
@@ -551,6 +557,8 @@ defmodule ClaperWeb.EventLive.ManagerSettingsComponent do
               </ClaperWeb.Component.Input.check_button>
             </div>
 
+            <.reactions_config event={@event} scope_id={@scope_id} />
+
             <div class="flex space-x-2 items-center">
               <ClaperWeb.Component.Input.check_button
                 key={:message_reaction_enabled}
@@ -604,6 +612,145 @@ defmodule ClaperWeb.EventLive.ManagerSettingsComponent do
           </div>
         </div>
       </div>
+    </div>
+    """
+  end
+
+  attr :event, :any, required: true
+  attr :scope_id, :string, required: true
+
+  defp reactions_config(assigns) do
+    reactions = (assigns.event && assigns.event.reactions) || []
+
+    assigns =
+      assigns
+      |> assign(:reactions, reactions)
+      |> assign(:max_reactions, Event.max_reactions())
+
+    ~H"""
+    <div :if={@event} class="mt-3 mb-2 border-t border-gray-200 pt-3">
+      <div class="flex items-center space-x-2 font-semibold text-sm mb-2">
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          class="w-4 h-4"
+        >
+          <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+          <path d="M12 21a9 9 0 1 1 0 -18a9 9 0 0 1 0 18z" />
+          <path d="M9 10l.01 0" /><path d="M15 10l.01 0" />
+          <path d="M9.5 15a3.5 3.5 0 0 0 5 0" />
+        </svg>
+        <span>{gettext("Reactions")}</span>
+      </div>
+
+      <p class="text-xs text-gray-500 mb-2">
+        {gettext(
+          "Configure the emojis attendees can react with. The weight determines each emoji's effect on question popularity (+1 / 0 / -1)."
+        )}
+      </p>
+
+      <div class="grid grid-cols-1 gap-1.5">
+        <div
+          :for={r <- @reactions}
+          class="flex items-center gap-2 bg-gray-50 rounded-md px-2 py-1.5"
+        >
+          <span class="text-2xl leading-none w-8 text-center">{r.emoji}</span>
+
+          <div class="flex rounded-md overflow-hidden border border-gray-300 text-xs">
+            <button
+              type="button"
+              phx-click="update-reaction-weight"
+              phx-value-emoji={r.emoji}
+              phx-value-weight="1"
+              class={"px-2 py-1 #{if r.weight == 1, do: "bg-green-500 text-white", else: "bg-white text-gray-700 hover:bg-gray-100"}"}
+              title={gettext("Adds 1 to popularity")}
+            >
+              +1
+            </button>
+            <button
+              type="button"
+              phx-click="update-reaction-weight"
+              phx-value-emoji={r.emoji}
+              phx-value-weight="0"
+              class={"px-2 py-1 border-l border-gray-300 #{if r.weight == 0, do: "bg-gray-500 text-white", else: "bg-white text-gray-700 hover:bg-gray-100"}"}
+              title={gettext("Does not affect popularity")}
+            >
+              0
+            </button>
+            <button
+              type="button"
+              phx-click="update-reaction-weight"
+              phx-value-emoji={r.emoji}
+              phx-value-weight="-1"
+              class={"px-2 py-1 border-l border-gray-300 #{if r.weight == -1, do: "bg-red-500 text-white", else: "bg-white text-gray-700 hover:bg-gray-100"}"}
+              title={gettext("Subtracts 1 from popularity")}
+            >
+              -1
+            </button>
+          </div>
+
+          <button
+            type="button"
+            phx-click="remove-reaction"
+            phx-value-emoji={r.emoji}
+            class="ml-auto text-red-500 hover:text-red-700"
+            title={gettext("Remove")}
+            aria-label={gettext("Remove reaction %{emoji}", emoji: r.emoji)}
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 20 20"
+              fill="currentColor"
+              class="w-4 h-4"
+            >
+              <path
+                fill-rule="evenodd"
+                d="M8.75 1A2.75 2.75 0 0 0 6 3.75v.443c-.795.077-1.584.176-2.365.298a.75.75 0 1 0 .23 1.482l.149-.022.841 10.518A2.75 2.75 0 0 0 7.596 19h4.807a2.75 2.75 0 0 0 2.742-2.53l.841-10.52.149.023a.75.75 0 0 0 .23-1.482A41.03 41.03 0 0 0 14 4.193V3.75A2.75 2.75 0 0 0 11.25 1h-2.5ZM10 4c.84 0 1.673.025 2.5.075V3.75c0-.69-.56-1.25-1.25-1.25h-2.5c-.69 0-1.25.56-1.25 1.25v.325C8.327 4.025 9.16 4 10 4Z"
+                clip-rule="evenodd"
+              />
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <%= if length(@reactions) < @max_reactions do %>
+        <div
+          id={"reactions-add-#{@scope_id}"}
+          phx-hook="EmojiPicker"
+          phx-update="ignore"
+          class="mt-2 relative inline-block"
+        >
+          <button
+            type="button"
+            data-emoji-picker-toggle
+            class="flex items-center gap-1 text-xs bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 rounded-md px-2 py-1"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 20 20"
+              fill="currentColor"
+              class="w-4 h-4"
+            >
+              <path d="M10.75 4.75a.75.75 0 0 0-1.5 0v4.5h-4.5a.75.75 0 0 0 0 1.5h4.5v4.5a.75.75 0 0 0 1.5 0v-4.5h4.5a.75.75 0 0 0 0-1.5h-4.5v-4.5Z" />
+            </svg>
+            <span>{gettext("Add reaction")}</span>
+          </button>
+          <div
+            data-emoji-picker-popup
+            class="hidden absolute z-50 mt-1 left-0 bg-white shadow-xl rounded-md"
+          >
+          </div>
+        </div>
+      <% else %>
+        <p class="text-xs text-gray-400 italic mt-2">
+          {gettext("Maximum of %{n} reactions reached.", n: @max_reactions)}
+        </p>
+      <% end %>
     </div>
     """
   end

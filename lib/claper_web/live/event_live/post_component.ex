@@ -1,6 +1,8 @@
 defmodule ClaperWeb.EventLive.PostComponent do
   use ClaperWeb, :live_component
 
+  alias Claper.Posts.Post
+
   def render(assigns) do
     ~H"""
     <div id={@id}>
@@ -79,23 +81,14 @@ defmodule ClaperWeb.EventLive.PostComponent do
           <p>{ClaperWeb.Helpers.format_body(@post.body)}</p>
 
           <div class="flex h-6 text-sm float-right text-white space-x-2">
-            <%= if @post.like_count > 0 do %>
-              <div class="flex px-1 items-center">
-                <img src="/images/icons/thumb.svg" class="h-4" />
-                <span class="ml-1 text-white">{@post.like_count}</span>
-              </div>
-            <% end %>
-            <%= if @post.love_count > 0 do %>
-              <div class="flex px-1 items-center">
-                <img src="/images/icons/heart.svg" class="h-4" />
-                <span class="ml-1 text-white">{@post.love_count}</span>
-              </div>
-            <% end %>
-            <%= if @post.lol_count > 0 do %>
-              <div class="flex px-1 items-center">
-                <img src="/images/icons/laugh.svg" class="h-4" />
-                <span class="ml-1 text-white">{@post.lol_count}</span>
-              </div>
+            <%= for %{emoji: emoji} <- @event.reactions || [] do %>
+              <% count = Post.reaction_count(@post, emoji) %>
+              <%= if count > 0 do %>
+                <div class="flex px-1 items-center">
+                  <span class="text-base leading-none">{emoji}</span>
+                  <span class="ml-1 text-white">{count}</span>
+                </div>
+              <% end %>
             <% end %>
           </div>
         </div>
@@ -143,8 +136,7 @@ defmodule ClaperWeb.EventLive.PostComponent do
                   to: "#",
                   phx_click: "delete",
                   phx_value_id: @post.uuid,
-                  phx_value_event_id: @event.uuid,
-                  data: [confirm: gettext("Are you sure?")]
+                  phx_value_event_id: @event.uuid
                 )}
               </span>
             </div>
@@ -180,80 +172,18 @@ defmodule ClaperWeb.EventLive.PostComponent do
 
           <div class="flex h-6 text-xs float-right space-x-2">
             <%= if @reaction_enabled do %>
-              <%= if not Enum.member?(@liked_posts, @post.id) do %>
+              <%= for %{emoji: emoji} <- @event.reactions || [] do %>
+                <% count = Post.reaction_count(@post, emoji) %>
+                <% reacted = Enum.member?(Map.get(@reacted_posts, emoji, []), @post.id) %>
                 <button
-                  phx-click="react"
-                  phx-value-type="👍"
+                  phx-click={if reacted, do: "unreact", else: "react"}
+                  phx-value-type={emoji}
                   phx-value-post-id={@post.uuid}
-                  class="flex rounded-full px-3 py-1 border border-gray-300 bg-white items-center"
+                  class={"flex rounded-full px-3 py-1 border border-gray-300 items-center #{if reacted, do: "bg-gray-100", else: "bg-white"}"}
                 >
-                  <img src="/images/icons/thumb.svg" class="h-4" />
-                  <%= if @post.like_count > 0 do %>
-                    <span class="ml-1">{@post.like_count}</span>
-                  <% end %>
-                </button>
-              <% else %>
-                <button
-                  phx-click="unreact"
-                  phx-value-type="👍"
-                  phx-value-post-id={@post.uuid}
-                  class="flex rounded-full px-3 py-1 border border-gray-300 bg-gray-100 items-center"
-                >
-                  <span class="">
-                    <img src="/images/icons/thumb.svg" class="h-4" />
-                  </span>
-                  <%= if @post.like_count > 0 do %>
-                    <span class="ml-1">{@post.like_count}</span>
-                  <% end %>
-                </button>
-              <% end %>
-              <%= if not Enum.member?(@loved_posts, @post.id) do %>
-                <button
-                  phx-click="react"
-                  phx-value-type="❤️"
-                  phx-value-post-id={@post.uuid}
-                  class="flex rounded-full px-3 py-1 border border-gray-300 bg-white items-center"
-                >
-                  <img src="/images/icons/heart.svg" class="h-4" />
-                  <%= if @post.love_count > 0 do %>
-                    <span class="ml-1">{@post.love_count}</span>
-                  <% end %>
-                </button>
-              <% else %>
-                <button
-                  phx-click="unreact"
-                  phx-value-type="❤️"
-                  phx-value-post-id={@post.uuid}
-                  class="flex rounded-full px-3 py-1 border border-gray-300 bg-gray-100 items-center"
-                >
-                  <img src="/images/icons/heart.svg" class="h-4" />
-                  <%= if @post.love_count > 0 do %>
-                    <span class="ml-1">{@post.love_count}</span>
-                  <% end %>
-                </button>
-              <% end %>
-              <%= if not Enum.member?(@loled_posts, @post.id) do %>
-                <button
-                  phx-click="react"
-                  phx-value-type="😂"
-                  phx-value-post-id={@post.uuid}
-                  class="flex rounded-full px-3 py-1 border border-gray-300 bg-white items-center"
-                >
-                  <img src="/images/icons/laugh.svg" class="h-4" />
-                  <%= if @post.lol_count > 0 do %>
-                    <span class="ml-1">{@post.lol_count}</span>
-                  <% end %>
-                </button>
-              <% else %>
-                <button
-                  phx-click="unreact"
-                  phx-value-type="😂"
-                  phx-value-post-id={@post.uuid}
-                  class="flex rounded-full px-3 py-1 border border-gray-300 bg-gray-100 items-center"
-                >
-                  <img src="/images/icons/laugh.svg" class="h-4" />
-                  <%= if @post.lol_count > 0 do %>
-                    <span class="ml-1">{@post.lol_count}</span>
+                  <span class="text-base leading-none">{emoji}</span>
+                  <%= if count > 0 do %>
+                    <span class="ml-1">{count}</span>
                   <% end %>
                 </button>
               <% end %>

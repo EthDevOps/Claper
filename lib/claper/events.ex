@@ -438,6 +438,25 @@ defmodule Claper.Events do
   end
 
   @doc """
+  Updates the per-event reactions configuration (emoji + weight list).
+  Broadcasts the updated event to the event's PubSub topic so attendees
+  and presenters re-render with the new emoji set.
+  """
+  def update_event_reactions(%Event{} = event, reactions) do
+    event
+    |> Event.update_changeset(%{"reactions" => reactions})
+    |> Repo.update()
+    |> case do
+      {:ok, updated_event} ->
+        broadcast_event(updated_event.uuid, {:reactions_updated, updated_event})
+        {:ok, updated_event}
+
+      {:error, changeset} ->
+        {:error, changeset}
+    end
+  end
+
+  @doc """
   Terminates an event.
 
   ## Examples

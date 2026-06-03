@@ -124,35 +124,23 @@ defmodule ClaperWeb.EventLive.ManageablePostComponent do
         </div>
       </div>
 
-      <%= if @post.like_count> 0 || @post.love_count > 0 || @post.lol_count > 0 do %>
+      <%= if has_reactions?(@post) do %>
         <div class="flex h-6 space-x-2 text-base text-gray-500 pb-3 items-center mt-5">
-          <div class="flex items-center">
-            <%= if @post.like_count> 0 do %>
-              <img src="/images/icons/thumb.svg" class="h-4" />
-              <span class="ml-1">
-                {@post.like_count}
-              </span>
-            <% end %>
-          </div>
-          <div class="flex items-center">
-            <%= if @post.love_count> 0 do %>
-              <img src="/images/icons/heart.svg" class="h-4" />
-              <span class="ml-1">
-                {@post.love_count}
-              </span>
-            <% end %>
-          </div>
-          <div class="flex items-center">
-            <%= if @post.lol_count> 0 do %>
-              <img src="/images/icons/laugh.svg" class="h-4" />
-              <span class="ml-1">
-                {@post.lol_count}
-              </span>
-            <% end %>
-          </div>
+          <%= for {emoji, count} <- Enum.sort(@post.reaction_counts || %{}), count > 0 do %>
+            <div class="flex items-center">
+              <span class="text-base leading-none">{emoji}</span>
+              <span class="ml-1">{count}</span>
+            </div>
+          <% end %>
         </div>
       <% end %>
     </div>
     """
   end
+
+  defp has_reactions?(%{reaction_counts: counts}) when is_map(counts) do
+    Enum.any?(counts, fn {_emoji, count} -> count > 0 end)
+  end
+
+  defp has_reactions?(_post), do: false
 end

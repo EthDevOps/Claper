@@ -6,9 +6,7 @@ defmodule Claper.Posts.Post do
           id: integer(),
           body: String.t(),
           uuid: Ecto.UUID.t(),
-          like_count: integer() | nil,
-          love_count: integer() | nil,
-          lol_count: integer() | nil,
+          reaction_counts: %{optional(String.t()) => integer()} | nil,
           name: String.t() | nil,
           attendee_identifier: String.t() | nil,
           position: integer() | nil,
@@ -23,9 +21,7 @@ defmodule Claper.Posts.Post do
   schema "posts" do
     field :body, :string
     field :uuid, :binary_id
-    field :like_count, :integer, default: 0
-    field :love_count, :integer, default: 0
-    field :lol_count, :integer, default: 0
+    field :reaction_counts, :map, default: %{}
     field :name, :string
     field :attendee_identifier, :string
     field :position, :integer, default: 0
@@ -45,9 +41,7 @@ defmodule Claper.Posts.Post do
       :body,
       :attendee_identifier,
       :user_id,
-      :like_count,
-      :love_count,
-      :lol_count,
+      :reaction_counts,
       :name,
       :position,
       :pinned
@@ -62,4 +56,25 @@ defmodule Claper.Posts.Post do
     |> validate_required([:name])
     |> validate_length(:name, min: 2, max: 20)
   end
+
+  @doc """
+  Returns the count for a specific emoji on this post.
+  """
+  def reaction_count(%__MODULE__{reaction_counts: counts}, emoji) when is_map(counts) do
+    Map.get(counts, emoji, 0)
+  end
+
+  def reaction_count(_post, _emoji), do: 0
+
+  @doc """
+  Computes the post's popularity as the sum of (count × weight) across the
+  event's configured reactions. Emojis no longer in the config are ignored.
+  """
+  def popularity(%__MODULE__{reaction_counts: counts}, reactions_config) when is_map(counts) do
+    Enum.reduce(reactions_config, 0, fn %{emoji: emoji, weight: weight}, acc ->
+      acc + Map.get(counts, emoji, 0) * weight
+    end)
+  end
+
+  def popularity(_post, _config), do: 0
 end

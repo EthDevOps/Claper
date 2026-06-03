@@ -128,6 +128,7 @@
           module={ClaperWeb.EventLive.ManagerSettingsComponent}
           create={@create}
           state={@state}
+          event={@event}
           show_shortcut={false}
           current_interaction={@current_interaction}
         />
@@ -1260,7 +1261,7 @@
                   <button
                     class="bg-gray-300 text-gray-700 rounded-md px-3 py-1 flex items-center gap-x-1"
                     phx-click="sort-questions"
-                    phx-value-sort="likes"
+                    phx-value-sort="popularity"
                   >
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
@@ -1459,6 +1460,7 @@
                 module={ClaperWeb.EventLive.ManagerSettingsComponent}
                 create={@create}
                 state={@state}
+                event={@event}
                 current_interaction={@current_interaction}
               />
             </div>
