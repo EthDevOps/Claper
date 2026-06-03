@@ -5,7 +5,7 @@ defmodule ClaperWeb.EventLive.ManageablePostComponent do
     assigns =
       assigns
       |> assign_new(:readonly, fn -> false end)
-      |> assign(:question?, ClaperWeb.Helpers.body_without_links(assigns.post.body) =~ "?")
+      |> assign(:question?, ClaperWeb.Helpers.question?(assigns.post, assigns.event))
 
     ~H"""
     <div

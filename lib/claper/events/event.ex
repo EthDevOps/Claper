@@ -11,6 +11,7 @@ defmodule Claper.Events.Event do
           started_at: NaiveDateTime.t(),
           expired_at: NaiveDateTime.t() | nil,
           authed_only: boolean(),
+          treat_all_as_questions: boolean(),
           reactions: [Claper.Events.ReactionConfig.t()] | nil,
           posts: [Claper.Posts.Post.t()] | nil,
           leaders: [Claper.Events.ActivityLeader.t()] | nil,
@@ -39,6 +40,7 @@ defmodule Claper.Events.Event do
     field :started_at, :naive_datetime
     field :expired_at, :naive_datetime
     field :authed_only, :boolean, default: false
+    field :treat_all_as_questions, :boolean, default: false
 
     embeds_many :reactions, Claper.Events.ReactionConfig, on_replace: :delete
 
@@ -63,6 +65,7 @@ defmodule Claper.Events.Event do
       :expired_at,
       :audience_peak,
       :authed_only,
+      :treat_all_as_questions,
       :user_id
     ])
     |> cast_embed(:reactions, with: &Claper.Events.ReactionConfig.changeset/2)
@@ -114,6 +117,7 @@ defmodule Claper.Events.Event do
       :expired_at,
       :audience_peak,
       :authed_only,
+      :treat_all_as_questions,
       :user_id
     ])
     |> cast_embed(:reactions, with: &Claper.Events.ReactionConfig.changeset/2)

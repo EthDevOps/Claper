@@ -94,7 +94,7 @@ defmodule ClaperWeb.EventLive.Manage do
       |> stream_insert(:posts, post)
       |> update(:post_count, fn post_count -> post_count + 1 end)
 
-    case ClaperWeb.Helpers.body_without_links(post.body) =~ "?" do
+    case ClaperWeb.Helpers.question?(post, socket.assigns.event) do
       true ->
         {:noreply,
          socket
@@ -132,7 +132,7 @@ defmodule ClaperWeb.EventLive.Manage do
       end)
       |> update(:post_count, fn post_count -> post_count - 1 end)
 
-    case ClaperWeb.Helpers.body_without_links(deleted_post.body) =~ "?" do
+    case ClaperWeb.Helpers.question?(deleted_post, socket.assigns.event) do
       true ->
         {:noreply,
          socket
@@ -728,6 +728,30 @@ defmodule ClaperWeb.EventLive.Manage do
   @impl true
   def handle_event(
         "checked",
+        %{"key" => "treat_all_as_questions", "value" => value},
+        %{assigns: %{event: event} = assigns} = socket
+      ) do
+    case Claper.Events.update_event(event, %{"treat_all_as_questions" => value}) do
+      {:ok, updated_event} ->
+        questions = list_all_questions(socket, updated_event.uuid, assigns.sort_questions_by)
+        answered = list_all_answered_questions(socket, updated_event.uuid)
+
+        {:noreply,
+         socket
+         |> assign(:event, updated_event)
+         |> assign(:question_count, length(questions))
+         |> assign(:answered_question_count, length(answered))
+         |> stream(:questions, questions, reset: true)
+         |> stream(:answered_questions, answered, reset: true)}
+
+      {:error, _changeset} ->
+        {:noreply, socket}
+    end
+  end
+
+  @impl true
+  def handle_event(
+        "checked",
         %{"key" => "quiz_show_results", "value" => value},
         %{assigns: %{current_interaction: interaction}} = socket
       ) do
@@ -1182,12 +1206,10 @@ defmodule ClaperWeb.EventLive.Manage do
       end
 
     Claper.Posts.list_questions(event_id, [:event, :reactions], sort_atom)
-    |> Enum.filter(&(ClaperWeb.Helpers.body_without_links(&1.body) =~ "?"))
   end
 
   defp list_all_answered_questions(_socket, event_id) do
     Claper.Posts.list_answered_questions(event_id, [:event, :reactions])
-    |> Enum.filter(&(ClaperWeb.Helpers.body_without_links(&1.body) =~ "?"))
   end
 
   defp list_form_submits(_socket, presentation_file_id) do
