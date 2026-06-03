@@ -32,24 +32,20 @@ defmodule ClaperWeb.EventLive.Show do
        |> put_flash(:error, gettext("Event doesn't exist"))
        |> redirect(to: "/")}
     else
-      cond do
-        event.authed_only and is_nil(socket.assigns[:current_user]) ->
-          {:ok,
-           socket
-           |> put_flash(
-             :error,
-             gettext("You must be logged in to join this event")
-           )
-           |> redirect(
-             to: ~p"/users/log_in?#{[return_to: "/e/#{event.code}"]}"
-           )}
-
-        true ->
-          init(
-            socket,
-            event,
-            check_if_banned(event.presentation_file.presentation_state.banned, socket)
-          )
+      if event.authed_only and is_nil(socket.assigns[:current_user]) do
+        {:ok,
+         socket
+         |> put_flash(
+           :error,
+           gettext("You must be logged in to join this event")
+         )
+         |> redirect(to: ~p"/users/log_in?#{[return_to: "/e/#{event.code}"]}")}
+      else
+        init(
+          socket,
+          event,
+          check_if_banned(event.presentation_file.presentation_state.banned, socket)
+        )
       end
     end
   end

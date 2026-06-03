@@ -453,10 +453,7 @@ defmodule ClaperWeb.EventLive.ManagerSettingsComponent do
             </div>
 
             <div :if={@event} class="flex space-x-2 items-center">
-              <ClaperWeb.Component.Input.check_button
-                key={:authed_only}
-                checked={@event.authed_only}
-              >
+              <ClaperWeb.Component.Input.check_button key={:authed_only} checked={@event.authed_only}>
                 <svg
                   :if={!@event.authed_only}
                   xmlns="http://www.w3.org/2000/svg"
@@ -704,10 +701,7 @@ defmodule ClaperWeb.EventLive.ManagerSettingsComponent do
       </p>
 
       <div class="grid grid-cols-1 gap-1.5">
-        <div
-          :for={r <- @reactions}
-          class="flex items-center gap-2 bg-gray-50 rounded-md px-2 py-1.5"
-        >
+        <div :for={r <- @reactions} class="flex items-center gap-2 bg-gray-50 rounded-md px-2 py-1.5">
           <span class="text-2xl leading-none w-8 text-center">{r.emoji}</span>
 
           <div class="flex rounded-md overflow-hidden border border-gray-300 text-xs">

@@ -831,7 +831,7 @@ defmodule ClaperWeb.EventLive.Manage do
 
       true ->
         new_reactions =
-          (Enum.map(current, &reaction_to_map/1) ++ [%{emoji: emoji, weight: 0}])
+          Enum.map(current, &reaction_to_map/1) ++ [%{emoji: emoji, weight: 0}]
 
         persist_reactions(socket, event, new_reactions)
     end

@@ -122,10 +122,7 @@
         <span :if={!@preview}>{gettext("Open preview")}</span>
         <span :if={@preview}>{gettext("Close preview")}</span>
       </button>
-      <div
-        id="settings-modal-content"
-        class="bg-white p-4 max-h-[80vh] overflow-y-auto"
-      >
+      <div id="settings-modal-content" class="bg-white p-4 max-h-[80vh] overflow-y-auto">
         <.live_component
           id="settings-modal-pane"
           module={ClaperWeb.EventLive.ManagerSettingsComponent}
@@ -1339,11 +1336,7 @@
                   stroke="currentColor"
                   class="w-36 h-36"
                 >
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    d="m4.5 12.75 6 6 9-13.5"
-                  />
+                  <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
                 </svg>
 
                 <p class="text-lg">
