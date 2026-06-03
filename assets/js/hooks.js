@@ -10,11 +10,39 @@ const Hooks = {
       const toggle = this.el.querySelector("[data-emoji-picker-toggle]");
       const popup = this.el.querySelector("[data-emoji-picker-popup]");
       if (!toggle || !popup) return;
+      this._popup = popup;
 
       let picker = null;
 
+      const originalParent = popup.parentNode;
+
       const close = () => {
         popup.classList.add("hidden");
+        if (popup.parentNode === document.body && originalParent) {
+          originalParent.appendChild(popup);
+        }
+      };
+
+      const positionPopup = () => {
+        const rect = toggle.getBoundingClientRect();
+        const popupWidth = popup.offsetWidth || 320;
+        const popupHeight = popup.offsetHeight || 400;
+        const viewportH = window.innerHeight;
+        const viewportW = window.innerWidth;
+
+        let top = rect.bottom + 4;
+        if (top + popupHeight > viewportH - 8) {
+          top = Math.max(8, rect.top - popupHeight - 4);
+        }
+        let left = rect.left;
+        if (left + popupWidth > viewportW - 8) {
+          left = Math.max(8, viewportW - popupWidth - 8);
+        }
+
+        popup.style.position = "fixed";
+        popup.style.top = `${top}px`;
+        popup.style.left = `${left}px`;
+        popup.style.zIndex = "9999";
       };
 
       const open = async () => {
@@ -30,7 +58,11 @@ const Hooks = {
           });
           popup.appendChild(picker);
         }
+        if (popup.parentNode !== document.body) {
+          document.body.appendChild(popup);
+        }
         popup.classList.remove("hidden");
+        positionPopup();
       };
 
       this._onToggleClick = (event) => {
@@ -43,7 +75,9 @@ const Hooks = {
       };
 
       this._onDocClick = (event) => {
-        if (!this.el.contains(event.target)) close();
+        if (this.el.contains(event.target)) return;
+        if (popup.contains(event.target)) return;
+        close();
       };
 
       toggle.addEventListener("click", this._onToggleClick);
@@ -52,6 +86,9 @@ const Hooks = {
 
     destroyed() {
       document.removeEventListener("click", this._onDocClick);
+      if (this._popup && this._popup.parentNode === document.body) {
+        this._popup.remove();
+      }
     },
   },
 
