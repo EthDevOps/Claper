@@ -31,6 +31,7 @@ defmodule ClaperWeb.EventLive.Manage do
       posts = list_all_posts(socket, event.uuid)
       pinned_posts = list_pinned_posts(socket, event.uuid)
       questions = list_all_questions(socket, event.uuid)
+      answered_questions = list_all_answered_questions(socket, event.uuid)
       form_submits = list_form_submits(socket, event.presentation_file.id)
 
       socket =
@@ -43,10 +44,12 @@ defmodule ClaperWeb.EventLive.Manage do
         |> assign(:state, event.presentation_file.presentation_state)
         |> stream(:posts, posts)
         |> stream(:questions, questions)
+        |> stream(:answered_questions, answered_questions)
         |> stream(:pinned_posts, pinned_posts)
         |> stream(:form_submits, form_submits)
         |> assign(:pinned_post_count, length(pinned_posts))
         |> assign(:question_count, length(questions))
+        |> assign(:answered_question_count, length(answered_questions))
         |> assign(:post_count, length(posts))
         |> assign(
           :total_interactions,
@@ -147,7 +150,7 @@ defmodule ClaperWeb.EventLive.Manage do
       socket
       |> stream_insert(:posts, post)
       |> stream_insert(:pinned_posts, post)
-      |> stream_insert(:questions, post)
+      |> maybe_stream_insert_question(post)
       |> assign(:pinned_post_count, socket.assigns.pinned_post_count + 1)
 
     {:noreply, updated_socket}
@@ -159,10 +162,32 @@ defmodule ClaperWeb.EventLive.Manage do
       socket
       |> stream_insert(:posts, post)
       |> stream_delete(:pinned_posts, post)
-      |> stream_insert(:questions, post)
+      |> maybe_stream_insert_question(post)
       |> assign(:pinned_post_count, socket.assigns.pinned_post_count - 1)
 
     {:noreply, updated_socket}
+  end
+
+  @impl true
+  def handle_info({:post_answered, post}, socket) do
+    {:noreply,
+     socket
+     |> stream_insert(:posts, post)
+     |> stream_delete(:questions, post)
+     |> stream_insert(:answered_questions, post, at: 0)
+     |> update(:question_count, &(&1 - 1))
+     |> update(:answered_question_count, &(&1 + 1))}
+  end
+
+  @impl true
+  def handle_info({:post_unanswered, post}, socket) do
+    {:noreply,
+     socket
+     |> stream_insert(:posts, post)
+     |> stream_delete(:answered_questions, post)
+     |> stream_insert(:questions, post)
+     |> update(:question_count, &(&1 + 1))
+     |> update(:answered_question_count, &(&1 - 1))}
   end
 
   @impl true
@@ -527,6 +552,18 @@ defmodule ClaperWeb.EventLive.Manage do
   end
 
   @impl true
+  def handle_event("answered", %{"id" => id}, socket) do
+    case Claper.Posts.get_post_for_event(id, event_id(socket), [:event]) do
+      nil ->
+        {:noreply, socket}
+
+      post ->
+        {:ok, _updated_post} = Claper.Posts.toggle_answered_post(post)
+        {:noreply, socket}
+    end
+  end
+
+  @impl true
   def handle_event(
         "ban",
         %{"user-id" => user_id},
@@ -851,6 +888,15 @@ defmodule ClaperWeb.EventLive.Manage do
              reset: true
            )}
 
+        "answered_questions" ->
+          {:answered_questions,
+           stream(
+             socket,
+             :answered_questions,
+             list_all_answered_questions(socket, socket.assigns.event.uuid),
+             reset: true
+           )}
+
         "forms" ->
           {:forms,
            stream(
@@ -1124,6 +1170,11 @@ defmodule ClaperWeb.EventLive.Manage do
     |> Enum.filter(&(ClaperWeb.Helpers.body_without_links(&1.body) =~ "?"))
   end
 
+  defp list_all_answered_questions(_socket, event_id) do
+    Claper.Posts.list_answered_questions(event_id, [:event, :reactions])
+    |> Enum.filter(&(ClaperWeb.Helpers.body_without_links(&1.body) =~ "?"))
+  end
+
   defp list_form_submits(_socket, presentation_file_id) do
     Claper.Forms.list_form_submits(presentation_file_id, [:form])
   end
@@ -1132,6 +1183,14 @@ defmodule ClaperWeb.EventLive.Manage do
     do: %{emoji: emoji, weight: weight}
 
   defp reaction_to_map(%{} = map), do: map
+
+  defp maybe_stream_insert_question(socket, post) do
+    if post.answered do
+      stream_insert(socket, :answered_questions, post)
+    else
+      stream_insert(socket, :questions, post)
+    end
+  end
 
   defp persist_reactions(socket, event, new_reactions) do
     case Claper.Events.update_event_reactions(event, new_reactions) do

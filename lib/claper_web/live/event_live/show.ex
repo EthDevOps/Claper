@@ -263,6 +263,16 @@ defmodule ClaperWeb.EventLive.Show do
   end
 
   @impl true
+  def handle_info({:post_answered, post}, socket) do
+    {:noreply, socket |> stream_insert(:posts, post)}
+  end
+
+  @impl true
+  def handle_info({:post_unanswered, post}, socket) do
+    {:noreply, socket |> stream_insert(:posts, post)}
+  end
+
+  @impl true
   def handle_info({:reaction_added, post}, socket) do
     {:noreply, socket |> stream_insert(:posts, post)}
   end

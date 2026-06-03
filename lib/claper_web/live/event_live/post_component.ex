@@ -24,7 +24,7 @@ defmodule ClaperWeb.EventLive.PostComponent do
             <img src="/images/icons/ellipsis-horizontal-white.svg" class="h-5" />
           </button>
 
-          <%= if @post.name || leader?(@post, @event, @leaders) || pinned?(@post) do %>
+          <%= if @post.name || leader?(@post, @event, @leaders) || pinned?(@post) || answered?(@post) do %>
             <div class="inline-flex items-center">
               <%= if @post.name do %>
                 <p class="text-white text-xs font-semibold mb-2 mr-2">{@post.name}</p>
@@ -61,6 +61,8 @@ defmodule ClaperWeb.EventLive.PostComponent do
                   <span>{gettext("Pinned")}</span>
                 </div>
               <% end %>
+
+              <.answered_badge :if={answered?(@post)} />
             </div>
           <% end %>
 
@@ -168,6 +170,8 @@ defmodule ClaperWeb.EventLive.PostComponent do
             </div>
           <% end %>
 
+          <.answered_badge :if={answered?(@post)} />
+
           <p>{ClaperWeb.Helpers.format_body(@post.body)}</p>
 
           <div class="flex h-6 text-xs float-right space-x-2">
@@ -204,4 +208,27 @@ defmodule ClaperWeb.EventLive.PostComponent do
   end
 
   defp pinned?(post), do: post.pinned
+
+  defp answered?(%{answered: true}), do: true
+  defp answered?(_post), do: false
+
+  defp answered_badge(assigns) do
+    ~H"""
+    <div class="inline-flex items-center space-x-1 justify-center px-3 py-0.5 rounded-full text-xs font-medium bg-green-500 text-white mb-2 ml-1">
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        viewBox="0 0 20 20"
+        fill="currentColor"
+        class="w-3.5 h-3.5"
+      >
+        <path
+          fill-rule="evenodd"
+          d="M16.704 4.153a.75.75 0 0 1 .143 1.052l-8 10.5a.75.75 0 0 1-1.127.075l-4.5-4.5a.75.75 0 0 1 1.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 0 1 1.05-.143Z"
+          clip-rule="evenodd"
+        />
+      </svg>
+      <span>{gettext("Answered")}</span>
+    </div>
+    """
+  end
 end

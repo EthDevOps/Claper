@@ -2,31 +2,51 @@ defmodule ClaperWeb.EventLive.ManageablePostComponent do
   use ClaperWeb, :live_component
 
   def render(assigns) do
-    assigns = assigns |> assign_new(:readonly, fn -> false end)
+    assigns =
+      assigns
+      |> assign_new(:readonly, fn -> false end)
+      |> assign(:question?, ClaperWeb.Helpers.body_without_links(assigns.post.body) =~ "?")
 
     ~H"""
     <div
       id={"#{@id}"}
-      class={"#{if ClaperWeb.Helpers.body_without_links(@post.body) =~ "?", do: "border-supporting-yellow-400 border-2"} flex flex-col md:block px-4 pb-2 pt-3 rounded-b-lg rounded-tr-lg bg-white relative shadow-md text-black break-all mt-2"}
+      class={"#{if @question?, do: "border-supporting-yellow-400 border-2"} flex flex-col md:block px-4 pb-2 pt-3 rounded-b-lg rounded-tr-lg bg-white relative shadow-md text-black break-all mt-2"}
     >
-      <div
-        :if={ClaperWeb.Helpers.body_without_links(@post.body) =~ "?"}
-        class="inline-flex items-center space-x-1 justify-center px-3 py-0.5 rounded-full text-xs font-medium bg-supporting-yellow-400 text-white mb-2"
-      >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          viewBox="0 0 16 16"
-          fill="currentColor"
-          class="w-4 h-4"
-        >
-          <path
-            fill-rule="evenodd"
-            d="M15 8A7 7 0 1 1 1 8a7 7 0 0 1 14 0Zm-6 3.5a1 1 0 1 1-2 0 1 1 0 0 1 2 0ZM7.293 5.293a1 1 0 1 1 .99 1.667c-.459.134-1.033.566-1.033 1.29v.25a.75.75 0 1 0 1.5 0v-.115a2.5 2.5 0 1 0-2.518-4.153.75.75 0 1 0 1.061 1.06Z"
-            clip-rule="evenodd"
-          />
-        </svg>
+      <div :if={@question?} class="inline-flex items-center gap-2 mb-2">
+        <span class="inline-flex items-center space-x-1 justify-center px-3 py-0.5 rounded-full text-xs font-medium bg-supporting-yellow-400 text-white">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 16 16"
+            fill="currentColor"
+            class="w-4 h-4"
+          >
+            <path
+              fill-rule="evenodd"
+              d="M15 8A7 7 0 1 1 1 8a7 7 0 0 1 14 0Zm-6 3.5a1 1 0 1 1-2 0 1 1 0 0 1 2 0ZM7.293 5.293a1 1 0 1 1 .99 1.667c-.459.134-1.033.566-1.033 1.29v.25a.75.75 0 1 0 1.5 0v-.115a2.5 2.5 0 1 0-2.518-4.153.75.75 0 1 0 1.061 1.06Z"
+              clip-rule="evenodd"
+            />
+          </svg>
+          <span>{gettext("Question")}</span>
+        </span>
 
-        <span>{gettext("Question")}</span>
+        <span
+          :if={@post.answered}
+          class="inline-flex items-center space-x-1 px-3 py-0.5 rounded-full text-xs font-medium bg-green-500 text-white"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 20 20"
+            fill="currentColor"
+            class="w-3.5 h-3.5"
+          >
+            <path
+              fill-rule="evenodd"
+              d="M16.704 4.153a.75.75 0 0 1 .143 1.052l-8 10.5a.75.75 0 0 1-1.127.075l-4.5-4.5a.75.75 0 0 1 1.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 0 1 1.05-.143Z"
+              clip-rule="evenodd"
+            />
+          </svg>
+          <span>{gettext("Answered")}</span>
+        </span>
       </div>
       <div :if={!@readonly} class="float-right mr-1">
         <%= if @post.attendee_identifier do %>
@@ -84,6 +104,18 @@ defmodule ClaperWeb.EventLive.ManageablePostComponent do
                     "Blocking this user will delete all his messages and he will not be able to join again, confirm ?"
                   )
               ]
+            )}
+          </span>
+          /
+        <% end %>
+        <%= if @question? do %>
+          <span class="text-green-600">
+            {link(
+              if(@post.answered, do: gettext("Unanswer"), else: gettext("Mark answered")),
+              to: "#",
+              phx_click: "answered",
+              phx_value_id: @post.uuid,
+              phx_value_event_id: @event.uuid
             )}
           </span>
           /
