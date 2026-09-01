@@ -41,6 +41,7 @@ defmodule ClaperWeb.EventLive.Manage do
     posts = list_all_posts(socket, event.uuid)
     pinned_posts = list_pinned_posts(socket, event.uuid)
     questions = list_all_questions(socket, event.uuid)
+    answered_questions = list_all_answered_questions(socket, event.uuid)
     form_submits = list_form_submits(socket, event.presentation_file.id)
 
     audio_token =
@@ -79,10 +80,12 @@ defmodule ClaperWeb.EventLive.Manage do
       |> assign(:transcription_globally_enabled, transcription_globally_enabled)
       |> stream(:posts, posts)
       |> stream(:questions, questions)
+      |> stream(:answered_questions, answered_questions)
       |> stream(:pinned_posts, pinned_posts)
       |> stream(:form_submits, form_submits)
       |> assign(:pinned_post_count, length(pinned_posts))
       |> assign(:question_count, length(questions))
+      |> assign(:answered_question_count, length(answered_questions))
       |> assign(:post_count, length(posts))
       |> assign(
         :total_interactions,
@@ -215,7 +218,7 @@ defmodule ClaperWeb.EventLive.Manage do
       socket
       |> stream_insert(:posts, post)
       |> stream_insert(:pinned_posts, post, at: 0)
-      |> stream_insert(:questions, post)
+      |> maybe_stream_insert_question(post)
       |> assign(:pinned_post_count, socket.assigns.pinned_post_count + 1)
 
     {:noreply, updated_socket}
@@ -227,10 +230,32 @@ defmodule ClaperWeb.EventLive.Manage do
       socket
       |> stream_insert(:posts, post)
       |> stream_delete(:pinned_posts, post)
-      |> stream_insert(:questions, post)
+      |> maybe_stream_insert_question(post)
       |> assign(:pinned_post_count, socket.assigns.pinned_post_count - 1)
 
     {:noreply, updated_socket}
+  end
+
+  @impl true
+  def handle_info({:post_answered, post}, socket) do
+    {:noreply,
+     socket
+     |> stream_insert(:posts, post)
+     |> stream_delete(:questions, post)
+     |> stream_insert(:answered_questions, post, at: 0)
+     |> update(:question_count, &(&1 - 1))
+     |> update(:answered_question_count, &(&1 + 1))}
+  end
+
+  @impl true
+  def handle_info({:post_unanswered, post}, socket) do
+    {:noreply,
+     socket
+     |> stream_insert(:posts, post)
+     |> stream_delete(:answered_questions, post)
+     |> stream_insert(:questions, post)
+     |> update(:question_count, &(&1 + 1))
+     |> update(:answered_question_count, &(&1 - 1))}
   end
 
   @impl true
@@ -844,6 +869,18 @@ defmodule ClaperWeb.EventLive.Manage do
   end
 
   @impl true
+  def handle_event("answered", %{"id" => id}, socket) do
+    case Claper.Posts.get_post_for_event(id, event_id(socket), [:event]) do
+      nil ->
+        {:noreply, socket}
+
+      post ->
+        {:ok, _updated_post} = Claper.Posts.toggle_answered_post(post)
+        {:noreply, socket}
+    end
+  end
+
+  @impl true
   def handle_event(
         "ban",
         %{"user_id" => user_id},
@@ -1203,6 +1240,15 @@ defmodule ClaperWeb.EventLive.Manage do
         "questions" ->
           {:questions,
            stream(socket, :questions, list_all_questions(socket, socket.assigns.event.uuid),
+             reset: true
+           )}
+
+        "answered_questions" ->
+          {:answered_questions,
+           stream(
+             socket,
+             :answered_questions,
+             list_all_answered_questions(socket, socket.assigns.event.uuid),
              reset: true
            )}
 
@@ -1576,6 +1622,19 @@ defmodule ClaperWeb.EventLive.Manage do
       |> Enum.filter(&(ClaperWeb.Helpers.body_without_links(&1.body) =~ "?"))
 
     if sort_atom == :date, do: Enum.reverse(questions), else: questions
+  end
+
+  defp list_all_answered_questions(_socket, event_id) do
+    Claper.Posts.list_answered_questions(event_id, [:event, :reactions])
+    |> Enum.filter(&(ClaperWeb.Helpers.body_without_links(&1.body) =~ "?"))
+  end
+
+  defp maybe_stream_insert_question(socket, post) do
+    if post.answered do
+      stream_insert(socket, :answered_questions, post)
+    else
+      stream_insert(socket, :questions, post)
+    end
   end
 
   defp list_form_submits(_socket, presentation_file_id) do
