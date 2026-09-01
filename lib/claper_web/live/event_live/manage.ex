@@ -773,6 +773,21 @@ defmodule ClaperWeb.EventLive.Manage do
   @impl true
   def handle_event(
         "checked",
+        %{"key" => "authed_only", "value" => value},
+        %{assigns: %{event: event}} = socket
+      ) do
+    case Claper.Events.update_event(event, %{"authed_only" => value}) do
+      {:ok, updated_event} ->
+        {:noreply, socket |> assign(:event, updated_event)}
+
+      {:error, _changeset} ->
+        {:noreply, socket}
+    end
+  end
+
+  @impl true
+  def handle_event(
+        "checked",
         %{"key" => "treat_all_as_questions", "value" => value},
         %{assigns: %{event: event} = assigns} = socket
       ) do

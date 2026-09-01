@@ -32,6 +32,7 @@ defmodule Claper.Events.Event do
           audience_peak: integer() | nil,
           started_at: NaiveDateTime.t(),
           expired_at: NaiveDateTime.t() | nil,
+          authed_only: boolean(),
           treat_all_as_questions: boolean(),
           posts: [Claper.Posts.Post.t()] | nil,
           leaders: [Claper.Events.ActivityLeader.t()] | nil,
@@ -48,6 +49,7 @@ defmodule Claper.Events.Event do
     field :audience_peak, :integer, default: 0
     field :started_at, :naive_datetime
     field :expired_at, :naive_datetime
+    field :authed_only, :boolean, default: false
     field :treat_all_as_questions, :boolean, default: false
 
     has_many :posts, Claper.Posts.Post
@@ -70,6 +72,7 @@ defmodule Claper.Events.Event do
       :started_at,
       :expired_at,
       :audience_peak,
+      :authed_only,
       :treat_all_as_questions,
       :user_id
     ])
@@ -115,6 +118,7 @@ defmodule Claper.Events.Event do
       :started_at,
       :expired_at,
       :audience_peak,
+      :authed_only,
       :treat_all_as_questions,
       :user_id
     ])

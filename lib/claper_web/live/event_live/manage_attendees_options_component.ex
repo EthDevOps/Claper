@@ -91,6 +91,36 @@ defmodule ClaperWeb.EventLive.ManageAttendeesOptionsComponent do
         <.toggle_row
           :if={@event}
           label={
+            if @event.authed_only,
+              do: gettext("Allow anyone with the code"),
+              else: gettext("Require login to join")
+          }
+          checked={@event.authed_only}
+          key={:authed_only}
+          show_shortcut={@show_shortcut}
+        >
+          <:icon>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              class="w-5 h-5"
+            >
+              <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+              <path d="M5 13a2 2 0 0 1 2 -2h10a2 2 0 0 1 2 2v6a2 2 0 0 1 -2 2h-10a2 2 0 0 1 -2 -2v-6z" />
+              <path d="M11 16a1 1 0 1 0 2 0a1 1 0 0 0 -2 0" />
+              <path :if={!@event.authed_only} d="M8 11v-4a4 4 0 1 1 8 0" />
+              <path :if={@event.authed_only} d="M8 11v-5a4 4 0 0 1 8 0v5" />
+            </svg>
+          </:icon>
+        </.toggle_row>
+        <.toggle_row
+          :if={@event}
+          label={
             if @event.treat_all_as_questions,
               do: gettext("Only messages with \"?\" are questions"),
               else: gettext("Treat all messages as questions")

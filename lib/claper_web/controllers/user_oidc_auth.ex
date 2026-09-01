@@ -15,13 +15,14 @@ defmodule ClaperWeb.UserOidcAuth do
   end
 
   @doc false
-  def new(conn, _params) do
+  def new(conn, params) do
     pkce_verifier = generate_pkce_verifier()
     state = :crypto.strong_rand_bytes(16) |> Base.url_encode64(padding: false)
     nonce = :crypto.strong_rand_bytes(16) |> Base.url_encode64(padding: false)
 
     conn =
       conn
+      |> maybe_store_return_to(params)
       |> put_session(:pkce_verifier, pkce_verifier)
       |> put_session(:oidc_state, state)
       |> put_session(:oidc_nonce, nonce)
@@ -145,6 +146,16 @@ defmodule ClaperWeb.UserOidcAuth do
 
     %{client_context | provider_configuration: provider_config}
   end
+
+  defp maybe_store_return_to(conn, %{"return_to" => return_to}) when is_binary(return_to) do
+    if String.starts_with?(return_to, "/") and not String.starts_with?(return_to, "//") do
+      put_session(conn, :user_return_to, return_to)
+    else
+      conn
+    end
+  end
+
+  defp maybe_store_return_to(conn, _params), do: conn
 
   defp clear_oidc_session(conn) do
     conn
