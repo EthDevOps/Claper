@@ -459,9 +459,9 @@ defmodule ClaperWeb.EventLive.Show do
   def handle_event(
         "save",
         %{"post" => post_params},
-        %{assigns: %{current_user: current_user} = _assigns} = socket
+        %{assigns: %{current_user: current_user, nickname: nickname} = _assigns} = socket
       )
-      when is_map(current_user) do
+      when is_map(current_user) and nickname != "" do
     post_params =
       post_params
       |> Map.put("user_id", current_user.id)
@@ -818,8 +818,9 @@ defmodule ClaperWeb.EventLive.Show do
     end
   end
 
-  defp reactor_identity(%{assigns: %{current_user: current_user}}) when is_map(current_user),
-    do: %{user_id: current_user.id}
+  defp reactor_identity(%{assigns: %{current_user: current_user, nickname: nickname}})
+       when is_map(current_user) and nickname != "",
+       do: %{user_id: current_user.id}
 
   defp reactor_identity(%{assigns: %{attendee_identifier: attendee_identifier}}),
     do: %{attendee_identifier: attendee_identifier}
