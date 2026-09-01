@@ -12,7 +12,7 @@ defmodule ClaperWeb.EventLive.ManageablePostComponent do
       |> assign_new(:readonly, fn -> false end)
       |> assign(:avatar_color, avatar_color(assigns.post))
       |> assign(:avatar_emoji, avatar_emoji(assigns.post))
-      |> assign(:question?, ClaperWeb.Helpers.body_without_links(assigns.post.body) =~ "?")
+      |> assign(:question?, ClaperWeb.Helpers.question?(assigns.post, assigns.event))
 
     ~H"""
     <div

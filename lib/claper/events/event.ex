@@ -32,6 +32,7 @@ defmodule Claper.Events.Event do
           audience_peak: integer() | nil,
           started_at: NaiveDateTime.t(),
           expired_at: NaiveDateTime.t() | nil,
+          treat_all_as_questions: boolean(),
           posts: [Claper.Posts.Post.t()] | nil,
           leaders: [Claper.Events.ActivityLeader.t()] | nil,
           presentation_file: Claper.Presentations.PresentationFile.t() | nil,
@@ -47,6 +48,7 @@ defmodule Claper.Events.Event do
     field :audience_peak, :integer, default: 0
     field :started_at, :naive_datetime
     field :expired_at, :naive_datetime
+    field :treat_all_as_questions, :boolean, default: false
 
     has_many :posts, Claper.Posts.Post
     has_many :leaders, Claper.Events.ActivityLeader, on_replace: :delete
@@ -68,6 +70,7 @@ defmodule Claper.Events.Event do
       :started_at,
       :expired_at,
       :audience_peak,
+      :treat_all_as_questions,
       :user_id
     ])
     |> cast_assoc(:presentation_file)
@@ -106,7 +109,15 @@ defmodule Claper.Events.Event do
 
   def update_changeset(event, attrs) do
     event
-    |> cast(attrs, [:name, :code, :started_at, :expired_at, :audience_peak, :user_id])
+    |> cast(attrs, [
+      :name,
+      :code,
+      :started_at,
+      :expired_at,
+      :audience_peak,
+      :treat_all_as_questions,
+      :user_id
+    ])
     |> cast_assoc(:presentation_file)
     |> cast_assoc(:leaders)
     |> downcase_code

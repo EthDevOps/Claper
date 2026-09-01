@@ -34,7 +34,7 @@ defmodule Claper.Posts do
         join: e in assoc(p, :event),
         where:
           e.uuid == ^event_id and
-            like(p.body, "%?%") and
+            (e.treat_all_as_questions == true or like(p.body, "%?%")) and
             p.answered == false
       )
 
@@ -55,7 +55,10 @@ defmodule Claper.Posts do
   def list_answered_questions(event_id, preload \\ []) do
     from(p in Post,
       join: e in assoc(p, :event),
-      where: e.uuid == ^event_id and like(p.body, "%?%") and p.answered == true,
+      where:
+        e.uuid == ^event_id and
+          (e.treat_all_as_questions == true or like(p.body, "%?%")) and
+          p.answered == true,
       order_by: [desc: p.updated_at]
     )
     |> Repo.all()

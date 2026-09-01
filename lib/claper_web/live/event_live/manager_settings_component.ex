@@ -20,6 +20,7 @@ defmodule ClaperWeb.EventLive.ManagerSettingsComponent do
       <ClaperWeb.EventLive.ManageAttendeesOptionsComponent.render
         state={@state}
         create={@create}
+        event={@event}
         show_shortcut={@show_shortcut}
       />
     </div>
