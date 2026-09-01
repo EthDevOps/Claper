@@ -507,7 +507,7 @@ defmodule ClaperWeb.EventLive.Show do
       SecurityAudit.observe(socket, "message", nil, "forged_fields")
     end
 
-    case Posts.create_attendee_post(socket.assigns.event, reply_actor(socket), post_params) do
+    case Posts.create_attendee_post(socket.assigns.event, post_actor(socket), post_params) do
       {:ok, post} ->
         SecurityAudit.observe(socket, "message", post.id, "submission_burst", 20)
 
@@ -863,8 +863,10 @@ defmodule ClaperWeb.EventLive.Show do
     end
   end
 
-  defp reactor_identity(%{assigns: %{current_user: current_user}}) when is_map(current_user),
-    do: %{user_id: current_user.id}
+  # A logged-in user without a nickname acts under their anonymous attendee identity.
+  defp reactor_identity(%{assigns: %{current_user: current_user, nickname: nickname}})
+       when is_map(current_user) and nickname != "",
+       do: %{user_id: current_user.id}
 
   defp reactor_identity(%{assigns: %{attendee_identifier: attendee_identifier}}),
     do: %{attendee_identifier: attendee_identifier}
@@ -922,6 +924,14 @@ defmodule ClaperWeb.EventLive.Show do
        do: "attendee:#{identifier}"
 
   defp reaction_sender(_socket), do: "pid:#{inspect(self())}"
+
+  # A logged-in user without a nickname posts under their anonymous attendee identity.
+  # Replies keep the account identity: host and author checks depend on it.
+  defp post_actor(%{assigns: %{current_user: user, nickname: "", attendee_identifier: id}})
+       when is_map(user),
+       do: {:attendee, id, ""}
+
+  defp post_actor(socket), do: reply_actor(socket)
 
   defp reply_actor(%{assigns: %{current_user: current_user, nickname: nickname}})
        when is_map(current_user),

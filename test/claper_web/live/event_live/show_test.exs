@@ -274,6 +274,25 @@ defmodule ClaperWeb.EventLive.ShowTest do
       refute Jason.encode!(audit.metadata) =~ forged_post["body"]
     end
 
+    test "signed-in users without a nickname post under their attendee identity", %{
+      event: event
+    } do
+      participant = confirmed_user_fixture()
+
+      conn =
+        build_conn()
+        |> init_test_session(%{attendee_identifier: "signed-anon"})
+        |> log_in_user(participant)
+
+      {:ok, view, _html} = live(conn, ~p"/e/#{event.code}")
+      render_submit(view, "save", %{"post" => %{"body" => "Asking anonymously"}})
+
+      assert [post] = Claper.Posts.list_posts(event.uuid)
+      assert post.user_id == nil
+      assert post.attendee_identifier == "signed-anon"
+      assert post.name in [nil, ""]
+    end
+
     test "disabled chat rejects direct save events for both identities", %{
       conn: conn,
       event: event,
