@@ -21,4 +21,8 @@ defmodule ClaperWeb.Helpers do
     url_regex = ~r/(https?:\/\/[^\s]+)/
     String.replace(text, url_regex, "")
   end
+
+  def question?(_post, %{treat_all_as_questions: true}), do: true
+
+  def question?(post, _event), do: body_without_links(post.body) =~ "?"
 end

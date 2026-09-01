@@ -4,7 +4,10 @@ defmodule ClaperWeb.EventLive.ManageAttendeesOptionsComponent do
   use Gettext, backend: ClaperWeb.Gettext
 
   def render(assigns) do
-    assigns = assigns |> assign_new(:show_shortcut, fn -> true end)
+    assigns =
+      assigns
+      |> assign_new(:show_shortcut, fn -> true end)
+      |> assign_new(:event, fn -> nil end)
 
     ~H"""
     <div class="flex flex-col gap-2 border border-gray-200 rounded-2xl p-2 bg-white shadow-lg">
@@ -82,6 +85,34 @@ defmodule ClaperWeb.EventLive.ManageAttendeesOptionsComponent do
               class="w-5 h-5"
             >
               <path d="M10 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM3.465 14.493a1.23 1.23 0 0 0 .41 1.412A9.957 9.957 0 0 0 10 18c2.31 0 4.438-.784 6.131-2.1.43-.333.604-.903.408-1.41a7.002 7.002 0 0 0-13.074.003Z" />
+            </svg>
+          </:icon>
+        </.toggle_row>
+        <.toggle_row
+          :if={@event}
+          label={
+            if @event.treat_all_as_questions,
+              do: gettext("Only messages with \"?\" are questions"),
+              else: gettext("Treat all messages as questions")
+          }
+          checked={@event.treat_all_as_questions}
+          key={:treat_all_as_questions}
+          show_shortcut={@show_shortcut}
+        >
+          <:icon>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              class="w-5 h-5"
+            >
+              <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+              <path d="M8 8a3.5 3 0 0 1 3.5 -3h1a3.5 3 0 0 1 3.5 3a3 3 0 0 1 -2 3a3 4 0 0 0 -2 4" />
+              <path d="M12 19l0 .01" />
             </svg>
           </:icon>
         </.toggle_row>
