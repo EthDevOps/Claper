@@ -14,9 +14,7 @@ defmodule ClaperWeb.PostLiveTest do
       post_fixture(%{
         user: params.user,
         event: presentation_file.event,
-        like_count: 1,
-        love_count: 0,
-        lol_count: 0
+        reaction_counts: %{"👍" => 1}
       })
 
     params |> Map.put(:presentation_file, presentation_file) |> Map.put(:post, post)
@@ -41,14 +39,14 @@ defmodule ClaperWeb.PostLiveTest do
       assert reaction_chip |> Floki.attribute("class") |> List.first() =~ "text-gray-800"
 
       render_click(index_live, "react", %{"type" => "👍", "post-id" => post.uuid})
-      assert Posts.get_post!(post.uuid).like_count == 1
+      assert Posts.Post.reaction_count(Posts.get_post!(post.uuid), "👍") == 1
     end
 
     test "allows reacting to another attendee's post", %{
       conn: conn,
       presentation_file: presentation_file
     } do
-      post_fixture(%{event: presentation_file.event, like_count: 0})
+      post_fixture(%{event: presentation_file.event, reaction_counts: %{}})
 
       {:ok, _index_live, html} = live(conn, ~p"/e/#{presentation_file.event.code}")
 

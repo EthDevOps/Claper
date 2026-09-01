@@ -68,9 +68,8 @@ defmodule Claper.PostsTest do
         name: "Forged name",
         position: 100,
         pinned: true,
-        like_count: 100,
-        love_count: 100,
-        lol_count: 100
+        answered: true,
+        reaction_counts: %{"👍" => 100}
       }
 
       assert {:ok, %Post{} = post} =
@@ -81,7 +80,8 @@ defmodule Claper.PostsTest do
       assert post.name == "Actual name"
       assert post.position == 3
       refute post.pinned
-      assert {post.like_count, post.love_count, post.lol_count} == {0, 0, 0}
+      refute post.answered
+      assert post.reaction_counts == %{}
     end
 
     test "trusted post creation and presenter pinning retain moderation fields" do
@@ -91,11 +91,11 @@ defmodule Claper.PostsTest do
                Posts.create_post(event, %{
                  body: "A moderated question?",
                  pinned: true,
-                 like_count: 12
+                 reaction_counts: %{"👍" => 12}
                })
 
       assert post.pinned
-      assert post.like_count == 12
+      assert post.reaction_counts == %{"👍" => 12}
       assert {:ok, unpinned} = Posts.toggle_pin_post(post)
       refute unpinned.pinned
       assert {:ok, pinned} = Posts.toggle_pin_post(unpinned)

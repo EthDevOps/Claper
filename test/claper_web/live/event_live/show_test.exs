@@ -185,9 +185,8 @@ defmodule ClaperWeb.EventLive.ShowTest do
         "name" => "Forged moderator",
         "position" => 999,
         "pinned" => true,
-        "like_count" => 900,
-        "love_count" => 800,
-        "lol_count" => 700,
+        "answered" => true,
+        "reaction_counts" => %{"👍" => 900},
         "event_id" => foreign_presentation.event.id
       }
 
@@ -223,7 +222,8 @@ defmodule ClaperWeb.EventLive.ShowTest do
         assert post.position == 2
         assert post.event_id == event.id
         refute post.pinned
-        assert {post.like_count, post.love_count, post.lol_count} == {0, 0, 0}
+        refute post.answered
+        assert post.reaction_counts == %{}
       end
 
       assert Claper.Posts.list_posts(foreign_event.uuid) == []
@@ -262,7 +262,8 @@ defmodule ClaperWeb.EventLive.ShowTest do
         assert post.position == 2
         assert post.event_id == event.id
         refute post.pinned
-        assert {post.like_count, post.love_count, post.lol_count} == {0, 0, 0}
+        refute post.answered
+        assert post.reaction_counts == %{}
       end
 
       assert Claper.Posts.list_posts(foreign_event.uuid) == []
