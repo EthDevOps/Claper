@@ -1,3 +1,14 @@
+## Fork changes (EthDevOps)
+
+Features carried on top of upstream v3:
+
+- Per-event configurable emoji reactions with popularity weights
+- Questions can be marked answered (dedicated tab, badges everywhere)
+- Per-event option to treat all messages as questions
+- Per-event option to require login to join (with return-to after login)
+- Logged-in users posting without a nickname stay anonymous
+- CI publishes images to ghcr.io/ethdevops/claper
+
 ## v.3.0.1
 
 ### Fixes and improvements
