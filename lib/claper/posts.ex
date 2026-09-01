@@ -29,24 +29,34 @@ defmodule Claper.Posts do
 
   """
   def list_questions(event_id, preload \\ [], sort \\ :date) do
-    query =
+    base_query =
       from(p in Post,
         join: e in assoc(p, :event),
         where:
           e.uuid == ^event_id and
             (e.treat_all_as_questions == true or like(p.body, "%?%")) and
-            p.answered == false
+            p.answered == false,
+        order_by: [asc: p.id]
       )
 
-    query =
-      case sort do
-        :likes -> from(p in query, order_by: [desc: p.like_count])
-        _ -> from(p in query, order_by: [asc: p.id])
-      end
+    posts =
+      base_query
+      |> Repo.all()
+      |> Repo.preload(preload)
 
-    query
-    |> Repo.all()
-    |> Repo.preload(preload)
+    case sort do
+      :popularity ->
+        reactions_config =
+          case from(e in Claper.Events.Event, where: e.uuid == ^event_id) |> Repo.one() do
+            nil -> []
+            event -> event.reactions || []
+          end
+
+        Enum.sort_by(posts, &Post.popularity(&1, reactions_config), :desc)
+
+      _ ->
+        posts
+    end
   end
 
   @doc """
@@ -295,6 +305,27 @@ defmodule Claper.Posts do
 
   """
   def get_reaction!(id), do: Repo.get!(Reaction, id)
+
+  @doc """
+  Atomically adjusts the count of a single emoji on a post's `reaction_counts`
+  map and returns the refreshed post (broadcasts `:post_updated`).
+  """
+  def bump_reaction_count(%Post{} = post, emoji, delta)
+      when is_binary(emoji) and delta in [-1, 1] do
+    counts = post.reaction_counts || %{}
+    new_count = max(Map.get(counts, emoji, 0) + delta, 0)
+
+    new_counts =
+      case new_count do
+        0 -> Map.delete(counts, emoji)
+        n -> Map.put(counts, emoji, n)
+      end
+
+    post
+    |> Post.changeset(%{reaction_counts: new_counts})
+    |> Repo.update()
+    |> broadcast(:post_updated)
+  end
 
   @doc """
   Creates a reaction.

@@ -133,35 +133,17 @@
 
                 <p class={"#{if @iframe, do: "text-xl", else: "text-3xl"}"}>{post.body}</p>
 
-                <%= if post.like_count > 0 || post.love_count > 0 || post.lol_count > 0 do %>
+                <% counts = post.reaction_counts || %{} %>
+                <%= if Enum.any?(counts, fn {_e, c} -> c > 0 end) do %>
                   <div class="flex h-6 space-x-2 text-lg text-gray-500 pb-3 items-center mt-5">
-                    <div class="flex items-center">
-                      <%= if post.like_count > 0 do %>
-                        <img
-                          src="/images/icons/thumb.svg"
-                          class={"#{if @iframe, do: "h-4", else: "h-7"}"}
-                        />
-                        <span class="ml-1">{post.like_count}</span>
-                      <% end %>
-                    </div>
-                    <div class="flex items-center">
-                      <%= if post.love_count > 0 do %>
-                        <img
-                          src="/images/icons/heart.svg"
-                          class={"#{if @iframe, do: "h-4", else: "h-7"}"}
-                        />
-                        <span class="ml-1">{post.love_count}</span>
-                      <% end %>
-                    </div>
-                    <div class="flex items-center">
-                      <%= if post.lol_count > 0 do %>
-                        <img
-                          src="/images/icons/laugh.svg"
-                          class={"#{if @iframe, do: "h-4", else: "h-7"}"}
-                        />
-                        <span class="ml-1">{post.lol_count}</span>
-                      <% end %>
-                    </div>
+                    <%= for {emoji, count} <- Enum.sort(counts), count > 0 do %>
+                      <div class="flex items-center">
+                        <span class={"leading-none #{if @iframe, do: "text-base", else: "text-2xl"}"}>
+                          {emoji}
+                        </span>
+                        <span class="ml-1">{count}</span>
+                      </div>
+                    <% end %>
                   </div>
                 <% end %>
               </div>
@@ -200,35 +182,17 @@
 
                 <p class={"#{if @iframe, do: "text-xl", else: "text-3xl"}"}>{post.body}</p>
 
-                <%= if post.like_count > 0 || post.love_count > 0 || post.lol_count > 0 do %>
+                <% counts = post.reaction_counts || %{} %>
+                <%= if Enum.any?(counts, fn {_e, c} -> c > 0 end) do %>
                   <div class="flex h-6 space-x-2 text-lg text-gray-500 pb-3 items-center mt-5">
-                    <div class="flex items-center">
-                      <%= if post.like_count > 0 do %>
-                        <img
-                          src="/images/icons/thumb.svg"
-                          class={"#{if @iframe, do: "h-4", else: "h-7"}"}
-                        />
-                        <span class="ml-1">{post.like_count}</span>
-                      <% end %>
-                    </div>
-                    <div class="flex items-center">
-                      <%= if post.love_count > 0 do %>
-                        <img
-                          src="/images/icons/heart.svg"
-                          class={"#{if @iframe, do: "h-4", else: "h-7"}"}
-                        />
-                        <span class="ml-1">{post.love_count}</span>
-                      <% end %>
-                    </div>
-                    <div class="flex items-center">
-                      <%= if post.lol_count > 0 do %>
-                        <img
-                          src="/images/icons/laugh.svg"
-                          class={"#{if @iframe, do: "h-4", else: "h-7"}"}
-                        />
-                        <span class="ml-1">{post.lol_count}</span>
-                      <% end %>
-                    </div>
+                    <%= for {emoji, count} <- Enum.sort(counts), count > 0 do %>
+                      <div class="flex items-center">
+                        <span class={"leading-none #{if @iframe, do: "text-base", else: "text-2xl"}"}>
+                          {emoji}
+                        </span>
+                        <span class="ml-1">{count}</span>
+                      </div>
+                    <% end %>
                   </div>
                 <% end %>
               </div>

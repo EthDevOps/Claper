@@ -21,6 +21,7 @@ defmodule ClaperWeb.EventLive.ManagerSettingsComponent do
         state={@state}
         create={@create}
         event={@event}
+        scope_id={@id}
         show_shortcut={@show_shortcut}
       />
     </div>

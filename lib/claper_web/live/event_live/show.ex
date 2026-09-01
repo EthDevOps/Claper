@@ -14,14 +14,6 @@ defmodule ClaperWeb.EventLive.Show do
     "raisehand" => :raisehand
   }
 
-  @reaction_fields %{
-    like: {:like_count, :like_posts},
-    love: {:love_count, :love_posts},
-    lol: {:lol_count, :lol_posts}
-  }
-
-  @post_reaction_types %{"👍" => :like, "❤️" => :love, "😂" => :lol}
-
   @impl true
   def mount(%{"code" => code}, session, socket) do
     with %{"locale" => locale} <- session do
@@ -103,9 +95,7 @@ defmodule ClaperWeb.EventLive.Show do
       socket
       |> assign(:attendees_nb, online_attendees(event))
       |> assign(:post_changeset, post_changeset)
-      |> assign(:like_posts, reacted_posts(socket, event.id, "👍"))
-      |> assign(:love_posts, reacted_posts(socket, event.id, "❤️"))
-      |> assign(:lol_posts, reacted_posts(socket, event.id, "😂"))
+      |> assign(:reacted_posts, load_reacted_posts(socket, event))
       |> assign(:selected_poll_opt, [])
       |> assign(:selected_quiz_question_opts, [])
       |> assign(:current_quiz_question_idx, 0)
@@ -327,6 +317,16 @@ defmodule ClaperWeb.EventLive.Show do
   @impl true
   def handle_info({:reaction_added, post}, socket) do
     {:noreply, socket |> stream_insert(:posts, post)}
+  end
+
+  @impl true
+  def handle_info({:reactions_updated, updated_event}, %{assigns: %{event: event}} = socket) do
+    merged_event = %{event | reactions: updated_event.reactions}
+
+    {:noreply,
+     socket
+     |> assign(:event, merged_event)
+     |> assign(:reacted_posts, load_reacted_posts(socket, merged_event))}
   end
 
   @impl true
@@ -568,78 +568,20 @@ defmodule ClaperWeb.EventLive.Show do
   end
 
   @impl true
-  def handle_event(
-        "react",
-        %{"type" => type, "post-id" => post_id} = _params,
-        %{assigns: %{current_user: current_user} = _assigns} = socket
-      )
-      when is_map(current_user) do
-    case Map.get(@post_reaction_types, type) do
-      nil ->
-        {:noreply, socket}
-
-      reaction ->
-        {:noreply,
-         add_reaction(socket, post_id, %{icon: type, user_id: current_user.id}, reaction)}
+  def handle_event("react", %{"type" => emoji, "post-id" => post_id}, socket) do
+    if allowed_emoji?(socket.assigns.event, emoji) do
+      {:noreply, add_reaction(socket, post_id, emoji, reactor_identity(socket))}
+    else
+      {:noreply, socket}
     end
   end
 
   @impl true
-  def handle_event(
-        "react",
-        %{"type" => type, "post-id" => post_id} = _params,
-        %{assigns: %{attendee_identifier: attendee_identifier} = _assigns} = socket
-      ) do
-    case Map.get(@post_reaction_types, type) do
-      nil ->
-        {:noreply, socket}
-
-      reaction ->
-        {:noreply,
-         add_reaction(
-           socket,
-           post_id,
-           %{icon: type, attendee_identifier: attendee_identifier},
-           reaction
-         )}
-    end
-  end
-
-  @impl true
-  def handle_event(
-        "unreact",
-        %{"type" => type, "post-id" => post_id} = _params,
-        %{assigns: %{current_user: current_user} = _assigns} = socket
-      )
-      when is_map(current_user) do
-    case Map.get(@post_reaction_types, type) do
-      nil ->
-        {:noreply, socket}
-
-      reaction ->
-        {:noreply,
-         remove_reaction(socket, post_id, %{icon: type, user_id: current_user.id}, reaction)}
-    end
-  end
-
-  @impl true
-  def handle_event(
-        "unreact",
-        %{"type" => type, "post-id" => post_id} = _params,
-        %{assigns: %{attendee_identifier: attendee_identifier} = _assigns} = socket
-      ) do
-    case Map.get(@post_reaction_types, type) do
-      nil ->
-        {:noreply, socket}
-
-      reaction ->
-        {:noreply,
-         remove_reaction(
-           socket,
-           post_id,
-           %{icon: type, attendee_identifier: attendee_identifier},
-           reaction
-         )}
+  def handle_event("unreact", %{"type" => emoji, "post-id" => post_id}, socket) do
+    if allowed_emoji?(socket.assigns.event, emoji) do
+      {:noreply, remove_reaction(socket, post_id, emoji, reactor_identity(socket))}
+    else
+      {:noreply, socket}
     end
   end
 
@@ -847,31 +789,55 @@ defmodule ClaperWeb.EventLive.Show do
     )
   end
 
-  defp add_reaction(socket, post_id, params, type) do
+  defp add_reaction(socket, post_id, emoji, identity) do
     with %Posts.Post{} = post <-
            Posts.get_post_for_event(post_id, socket.assigns.event.id, [:event]),
          false <- own_post?(socket, post),
-         {:ok, _} <- Posts.create_reaction(Map.merge(params, %{post: post})) do
-      {count_field, posts_field} = @reaction_fields[type]
+         {:ok, _} <- Posts.create_reaction(Map.merge(identity, %{icon: emoji, post: post})) do
+      {:ok, _} = Posts.bump_reaction_count(post, emoji, +1)
 
-      {:ok, _} = Posts.update_post(post, %{count_field => Map.get(post, count_field) + 1})
-      update(socket, posts_field, fn posts -> [post.id | posts] end)
+      update(socket, :reacted_posts, fn reacted ->
+        Map.update(reacted, emoji, [post.id], &[post.id | &1])
+      end)
     else
       _ -> socket
     end
   end
 
-  defp remove_reaction(socket, post_id, params, type) do
+  defp remove_reaction(socket, post_id, emoji, identity) do
     with %Posts.Post{} = post <-
            Posts.get_post_for_event(post_id, socket.assigns.event.id, [:event]),
-         {:ok, _} <- Posts.delete_reaction(Map.merge(params, %{post: post})) do
-      {count_field, posts_field} = @reaction_fields[type]
+         {:ok, _} <- Posts.delete_reaction(Map.merge(identity, %{icon: emoji, post: post})) do
+      {:ok, _} = Posts.bump_reaction_count(post, emoji, -1)
 
-      {:ok, _} = Posts.update_post(post, %{count_field => Map.get(post, count_field) - 1})
-      update(socket, posts_field, fn posts -> List.delete(posts, post.id) end)
+      update(socket, :reacted_posts, fn reacted ->
+        Map.update(reacted, emoji, [], &List.delete(&1, post.id))
+      end)
     else
       _ -> socket
     end
+  end
+
+  defp reactor_identity(%{assigns: %{current_user: current_user}}) when is_map(current_user),
+    do: %{user_id: current_user.id}
+
+  defp reactor_identity(%{assigns: %{attendee_identifier: attendee_identifier}}),
+    do: %{attendee_identifier: attendee_identifier}
+
+  defp allowed_emoji?(event, emoji) do
+    Enum.any?(event.reactions || [], &(&1.emoji == emoji))
+  end
+
+  defp load_reacted_posts(socket, event) do
+    identity =
+      case socket.assigns do
+        %{current_user: %{id: id}} -> id
+        %{attendee_identifier: attendee_identifier} -> attendee_identifier
+      end
+
+    Enum.into(event.reactions || [], %{}, fn %{emoji: emoji} ->
+      {emoji, Posts.reacted_posts(event.id, identity, emoji)}
+    end)
   end
 
   defp can_delete_post?(%{assigns: %{is_leader: true}}, _post), do: true
@@ -945,23 +911,6 @@ defmodule ClaperWeb.EventLive.Show do
     socket
     |> assign(:current_quiz_responses, responses)
     |> assign(:quiz_score, Quizzes.calculate_user_score(attendee_identifier, quiz_id))
-  end
-
-  defp reacted_posts(
-         %{assigns: %{current_user: current_user} = _assigns} = _socket,
-         event_id,
-         icon
-       )
-       when is_map(current_user) do
-    Posts.reacted_posts(event_id, current_user.id, icon)
-  end
-
-  defp reacted_posts(
-         %{assigns: %{attendee_identifier: attendee_identifier} = _assigns} = _socket,
-         event_id,
-         icon
-       ) do
-    Posts.reacted_posts(event_id, attendee_identifier, icon)
   end
 
   defp apply_action(socket, :show, _params) do

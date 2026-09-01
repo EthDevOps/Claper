@@ -34,6 +34,7 @@ defmodule Claper.Events.Event do
           expired_at: NaiveDateTime.t() | nil,
           authed_only: boolean(),
           treat_all_as_questions: boolean(),
+          reactions: [Claper.Events.ReactionConfig.t()] | nil,
           posts: [Claper.Posts.Post.t()] | nil,
           leaders: [Claper.Events.ActivityLeader.t()] | nil,
           presentation_file: Claper.Presentations.PresentationFile.t() | nil,
@@ -41,6 +42,17 @@ defmodule Claper.Events.Event do
           inserted_at: NaiveDateTime.t(),
           updated_at: NaiveDateTime.t()
         }
+
+  @max_reactions 6
+
+  @default_reactions [
+    %{emoji: "👍", weight: 1},
+    %{emoji: "❤️", weight: 1},
+    %{emoji: "😂", weight: 0}
+  ]
+
+  def max_reactions, do: @max_reactions
+  def default_reactions, do: @default_reactions
 
   schema "events" do
     field :uuid, :binary_id
@@ -51,6 +63,8 @@ defmodule Claper.Events.Event do
     field :expired_at, :naive_datetime
     field :authed_only, :boolean, default: false
     field :treat_all_as_questions, :boolean, default: false
+
+    embeds_many :reactions, Claper.Events.ReactionConfig, on_replace: :delete
 
     has_many :posts, Claper.Posts.Post
     has_many :leaders, Claper.Events.ActivityLeader, on_replace: :delete
@@ -76,9 +90,11 @@ defmodule Claper.Events.Event do
       :treat_all_as_questions,
       :user_id
     ])
+    |> cast_embed(:reactions, with: &Claper.Events.ReactionConfig.changeset/2)
     |> cast_assoc(:presentation_file)
     |> cast_assoc(:leaders)
     |> validate_required([:name, :code, :started_at])
+    |> validate_reactions()
   end
 
   def create_changeset(event, attrs) do
@@ -91,6 +107,10 @@ defmodule Claper.Events.Event do
     |> validate_length(:code, min: 5, max: 10)
     |> validate_length(:name, min: 5, max: 50)
     |> put_change(:uuid, Ecto.UUID.generate())
+    |> put_embed(
+      :reactions,
+      Enum.map(@default_reactions, &struct(Claper.Events.ReactionConfig, &1))
+    )
   end
 
   def downcase_code(changeset) do
@@ -122,12 +142,34 @@ defmodule Claper.Events.Event do
       :treat_all_as_questions,
       :user_id
     ])
+    |> cast_embed(:reactions, with: &Claper.Events.ReactionConfig.changeset/2)
     |> cast_assoc(:presentation_file)
     |> cast_assoc(:leaders)
     |> downcase_code
     |> validate_required([:name, :code, :started_at, :user_id])
     |> validate_length(:code, min: 5, max: 10)
     |> validate_length(:name, min: 5, max: 50)
+    |> validate_reactions()
+  end
+
+  defp validate_reactions(changeset) do
+    if get_change(changeset, :reactions) do
+      reactions = get_field(changeset, :reactions) || []
+      emojis = Enum.map(reactions, & &1.emoji)
+
+      cond do
+        length(reactions) > @max_reactions ->
+          add_error(changeset, :reactions, "cannot exceed #{@max_reactions} reactions")
+
+        length(emojis) != length(Enum.uniq(emojis)) ->
+          add_error(changeset, :reactions, "reactions must be unique")
+
+        true ->
+          changeset
+      end
+    else
+      changeset
+    end
   end
 
   def restart_changeset(event) do

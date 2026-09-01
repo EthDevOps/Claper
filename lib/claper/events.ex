@@ -422,6 +422,23 @@ defmodule Claper.Events do
   end
 
   @doc """
+  Updates the configured reactions of an event and notifies the event topic.
+  """
+  def update_event_reactions(%Event{} = event, reactions) do
+    event
+    |> Event.update_changeset(%{"reactions" => reactions})
+    |> Repo.update()
+    |> case do
+      {:ok, updated_event} ->
+        broadcast_event(updated_event.uuid, {:reactions_updated, updated_event})
+        {:ok, updated_event}
+
+      {:error, changeset} ->
+        {:error, changeset}
+    end
+  end
+
+  @doc """
   Updates an event.
 
   ## Examples

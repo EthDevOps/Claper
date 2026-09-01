@@ -226,6 +226,11 @@ defmodule ClaperWeb.EventLive.Manage do
   end
 
   @impl true
+  def handle_info({:reactions_updated, updated_event}, %{assigns: %{event: event}} = socket) do
+    {:noreply, assign(socket, :event, %{event | reactions: updated_event.reactions})}
+  end
+
+  @impl true
   def handle_info({:post_answered, post}, socket) do
     {:noreply,
      socket
@@ -1076,6 +1081,67 @@ defmodule ClaperWeb.EventLive.Manage do
   end
 
   @impl true
+  def handle_event("add-reaction", %{"emoji" => emoji}, socket) do
+    event = socket.assigns.event
+    current = event.reactions || []
+
+    cond do
+      length(current) >= Claper.Events.Event.max_reactions() ->
+        {:noreply,
+         put_flash(
+           socket,
+           :error,
+           gettext("You can configure at most %{n} reactions.",
+             n: Claper.Events.Event.max_reactions()
+           )
+         )}
+
+      Enum.any?(current, &(&1.emoji == emoji)) ->
+        {:noreply, put_flash(socket, :error, gettext("This reaction is already configured."))}
+
+      true ->
+        new_reactions =
+          Enum.map(current, &reaction_to_map/1) ++ [%{emoji: emoji, weight: 0}]
+
+        persist_reactions(socket, event, new_reactions)
+    end
+  end
+
+  @impl true
+  def handle_event("remove-reaction", %{"emoji" => emoji}, socket) do
+    event = socket.assigns.event
+
+    new_reactions =
+      (event.reactions || [])
+      |> Enum.reject(&(&1.emoji == emoji))
+      |> Enum.map(&reaction_to_map/1)
+
+    persist_reactions(socket, event, new_reactions)
+  end
+
+  @impl true
+  def handle_event(
+        "update-reaction-weight",
+        %{"emoji" => emoji, "weight" => weight},
+        socket
+      ) do
+    weight = String.to_integer(weight)
+    event = socket.assigns.event
+
+    new_reactions =
+      (event.reactions || [])
+      |> Enum.map(fn r ->
+        if r.emoji == emoji do
+          %{emoji: r.emoji, weight: weight}
+        else
+          reaction_to_map(r)
+        end
+      end)
+
+    persist_reactions(socket, event, new_reactions)
+  end
+
+  @impl true
   def handle_event("delete-form-submit", %{"id" => id}, socket) do
     case Claper.Forms.get_form_submit_for_event(id, event_id(socket)) do
       nil ->
@@ -1423,7 +1489,8 @@ defmodule ClaperWeb.EventLive.Manage do
   defp list_all_questions(_socket, event_id, sort \\ "date") do
     sort_atom =
       case sort do
-        "likes" -> :likes
+        "likes" -> :popularity
+        "popularity" -> :popularity
         _ -> :date
       end
 
@@ -1441,6 +1508,43 @@ defmodule ClaperWeb.EventLive.Manage do
       stream_insert(socket, :answered_questions, post)
     else
       stream_insert(socket, :questions, post)
+    end
+  end
+
+  defp reaction_to_map(%Claper.Events.ReactionConfig{emoji: emoji, weight: weight}),
+    do: %{emoji: emoji, weight: weight}
+
+  defp reaction_to_map(%{} = map), do: map
+
+  defp persist_reactions(socket, event, new_reactions) do
+    case Claper.Events.update_event_reactions(event, new_reactions) do
+      {:ok, updated_event} ->
+        socket = assign(socket, :event, %{event | reactions: updated_event.reactions})
+
+        socket =
+          if socket.assigns[:sort_questions_by] == "likes" do
+            stream(
+              socket,
+              :questions,
+              list_all_questions(socket, updated_event.uuid, "likes"),
+              reset: true
+            )
+          else
+            socket
+          end
+
+        {:noreply, socket}
+
+      {:error, changeset} ->
+        message =
+          changeset.errors
+          |> Enum.map_join(", ", fn {_, {msg, _}} -> msg end)
+          |> case do
+            "" -> gettext("Could not update reactions.")
+            text -> text
+          end
+
+        {:noreply, put_flash(socket, :error, message)}
     end
   end
 

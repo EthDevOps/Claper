@@ -22,7 +22,7 @@ defmodule Claper.PostsFixtures do
         attrs
         |> Enum.into(%{
           body: "some body",
-          like_count: 42,
+          reaction_counts: %{"👍" => 42},
           position: 0,
           uuid: Ecto.UUID.generate(),
           user_id: assoc.user.id

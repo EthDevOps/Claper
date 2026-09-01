@@ -273,29 +273,15 @@ defmodule ClaperWeb.EventLive.ManageablePostComponent do
               {ClaperWeb.Helpers.format_body(@post.body)}
             </p>
 
-            <%= if @post.like_count > 0 || @post.love_count > 0 || @post.lol_count > 0 do %>
+            <% counts = @post.reaction_counts || %{} %>
+            <%= if Enum.any?(counts, fn {_e, c} -> c > 0 end) do %>
               <div class="flex items-center gap-1 mt-2 text-gray-700">
-                <div
-                  :if={@post.like_count > 0}
-                  class="border border-gray-200 rounded-full px-2 py-2 flex items-center gap-1"
-                >
-                  <span class="text-sm leading-none">👍</span>
-                  <span class="font-bold text-xs">{@post.like_count}</span>
-                </div>
-                <div
-                  :if={@post.love_count > 0}
-                  class="border border-gray-200 rounded-full px-2 py-2 flex items-center gap-1"
-                >
-                  <span class="text-sm leading-none">❤️</span>
-                  <span class="font-bold text-xs">{@post.love_count}</span>
-                </div>
-                <div
-                  :if={@post.lol_count > 0}
-                  class="border border-gray-200 rounded-full px-2 py-2 flex items-center gap-1"
-                >
-                  <span class="text-sm leading-none">😂</span>
-                  <span class="font-bold text-xs">{@post.lol_count}</span>
-                </div>
+                <%= for {emoji, count} <- Enum.sort(counts), count > 0 do %>
+                  <div class="border border-gray-200 rounded-full px-2 py-2 flex items-center gap-1">
+                    <span class="text-sm leading-none">{emoji}</span>
+                    <span class="font-bold text-xs">{count}</span>
+                  </div>
+                <% end %>
               </div>
             <% end %>
           </div>

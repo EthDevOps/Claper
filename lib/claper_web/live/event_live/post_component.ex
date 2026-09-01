@@ -1,6 +1,8 @@
 defmodule ClaperWeb.EventLive.PostComponent do
   use ClaperWeb, :live_component
 
+  alias Claper.Posts.Post
+
   @impl true
   def render(assigns) do
     own_message =
@@ -154,37 +156,16 @@ defmodule ClaperWeb.EventLive.PostComponent do
         ]}
       >
         <button
+          :for={%{emoji: emoji} <- @event.reactions || []}
           type="button"
           role="menuitem"
-          aria-label={gettext("Thumbs up")}
-          phx-click={picker_reaction_click(Enum.member?(@liked_posts, @post.id), @post.id)}
-          phx-value-type="👍"
+          aria-label={gettext("React with %{emoji}", emoji: emoji)}
+          phx-click={picker_reaction_click(reacted?(@reacted_posts, emoji, @post.id), @post.id)}
+          phx-value-type={emoji}
           phx-value-post-id={@post.uuid}
-          class={picker_reaction_classes(Enum.member?(@liked_posts, @post.id))}
+          class={picker_reaction_classes(reacted?(@reacted_posts, emoji, @post.id))}
         >
-          👍
-        </button>
-        <button
-          type="button"
-          role="menuitem"
-          aria-label={gettext("Heart")}
-          phx-click={picker_reaction_click(Enum.member?(@loved_posts, @post.id), @post.id)}
-          phx-value-type="❤️"
-          phx-value-post-id={@post.uuid}
-          class={picker_reaction_classes(Enum.member?(@loved_posts, @post.id))}
-        >
-          ❤️
-        </button>
-        <button
-          type="button"
-          role="menuitem"
-          aria-label={gettext("Laugh")}
-          phx-click={picker_reaction_click(Enum.member?(@loled_posts, @post.id), @post.id)}
-          phx-value-type="😂"
-          phx-value-post-id={@post.uuid}
-          class={picker_reaction_classes(Enum.member?(@loled_posts, @post.id))}
-        >
-          😂
+          {emoji}
         </button>
       </div>
 
@@ -205,66 +186,28 @@ defmodule ClaperWeb.EventLive.PostComponent do
       <p class="break-words text-sm leading-5">{ClaperWeb.Helpers.format_body(@post.body)}</p>
 
       <div
-        :if={
-          @reaction_enabled &&
-            (@post.like_count > 0 || @post.love_count > 0 || @post.lol_count > 0)
-        }
+        :if={@reaction_enabled && total_reaction_count(@post, @event) > 0}
         class="mt-1.5 flex flex-wrap justify-end gap-1"
       >
-        <button
-          :if={@post.like_count > 0}
-          type="button"
-          data-reaction-chip
-          disabled={@own_message}
-          phx-click={if Enum.member?(@liked_posts, @post.id), do: "unreact", else: "react"}
-          phx-value-type="👍"
-          phx-value-post-id={@post.uuid}
-          aria-pressed={to_string(Enum.member?(@liked_posts, @post.id))}
-          class={
-            reaction_chip_classes(
-              Enum.member?(@liked_posts, @post.id),
-              @own_message && !@host_message
-            )
-          }
-        >
-          <span>👍</span><span :if={@post.like_count > 0}>{@post.like_count}</span>
-        </button>
-        <button
-          :if={@post.love_count > 0}
-          data-reaction-chip
-          type="button"
-          disabled={@own_message}
-          phx-click={if Enum.member?(@loved_posts, @post.id), do: "unreact", else: "react"}
-          phx-value-type="❤️"
-          phx-value-post-id={@post.uuid}
-          aria-pressed={to_string(Enum.member?(@loved_posts, @post.id))}
-          class={
-            reaction_chip_classes(
-              Enum.member?(@loved_posts, @post.id),
-              @own_message && !@host_message
-            )
-          }
-        >
-          <span>❤️</span><span :if={@post.love_count > 0}>{@post.love_count}</span>
-        </button>
-        <button
-          :if={@post.lol_count > 0}
-          data-reaction-chip
-          type="button"
-          disabled={@own_message}
-          phx-click={if Enum.member?(@loled_posts, @post.id), do: "unreact", else: "react"}
-          phx-value-type="😂"
-          phx-value-post-id={@post.uuid}
-          aria-pressed={to_string(Enum.member?(@loled_posts, @post.id))}
-          class={
-            reaction_chip_classes(
-              Enum.member?(@loled_posts, @post.id),
-              @own_message && !@host_message
-            )
-          }
-        >
-          <span>😂</span><span :if={@post.lol_count > 0}>{@post.lol_count}</span>
-        </button>
+        <%= for %{emoji: emoji} <- @event.reactions || [], Post.reaction_count(@post, emoji) > 0 do %>
+          <button
+            type="button"
+            data-reaction-chip
+            disabled={@own_message}
+            phx-click={if reacted?(@reacted_posts, emoji, @post.id), do: "unreact", else: "react"}
+            phx-value-type={emoji}
+            phx-value-post-id={@post.uuid}
+            aria-pressed={to_string(reacted?(@reacted_posts, emoji, @post.id))}
+            class={
+              reaction_chip_classes(
+                reacted?(@reacted_posts, emoji, @post.id),
+                @own_message && !@host_message
+              )
+            }
+          >
+            <span>{emoji}</span><span>{Post.reaction_count(@post, emoji)}</span>
+          </button>
+        <% end %>
       </div>
     </article>
     """
@@ -304,4 +247,14 @@ defmodule ClaperWeb.EventLive.PostComponent do
 
   defp answered?(%{answered: true}), do: true
   defp answered?(_post), do: false
+
+  defp reacted?(reacted_posts, emoji, post_id) do
+    Enum.member?(Map.get(reacted_posts, emoji, []), post_id)
+  end
+
+  defp total_reaction_count(post, event) do
+    Enum.reduce(event.reactions || [], 0, fn %{emoji: emoji}, acc ->
+      acc + Post.reaction_count(post, emoji)
+    end)
+  end
 end
