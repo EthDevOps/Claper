@@ -1,3 +1,15 @@
+## Fork changes (EthDevOps)
+
+Features carried on top of upstream v3.3.0:
+
+- Per-event configurable emoji reactions with popularity weights (replaces the `like_count`/`love_count`/`lol_count` columns with a `reaction_counts` map, so the database schema diverges from upstream)
+- Questions can be marked answered (dedicated tab, badges everywhere)
+- Per-event option to treat all messages as questions
+- Logged-in users posting without a nickname stay anonymous
+- CI publishes images to Harbor via the shared EthDevOps workflow
+
+Dropped: per-event "require login to join" (access is handled by Warpgate in front of Claper).
+
 ## v3.3.0
 
 ### Upgrade notes
