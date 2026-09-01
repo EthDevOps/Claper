@@ -64,6 +64,25 @@ defmodule ClaperWeb.EventLive.PostComponent do
           </svg>
           {gettext("Pinned")}
         </span>
+        <span
+          :if={answered?(@post)}
+          class="inline-flex items-center gap-1 rounded-full bg-green-500 px-2 py-1 text-[10px] font-bold uppercase text-white"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 20 20"
+            fill="currentColor"
+            class="h-3 w-3"
+            aria-hidden="true"
+          >
+            <path
+              fill-rule="evenodd"
+              d="M16.704 4.153a.75.75 0 0 1 .143 1.052l-8 10.5a.75.75 0 0 1-1.127.075l-4.5-4.5a.75.75 0 0 1 1.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 0 1 1.05-.143Z"
+              clip-rule="evenodd"
+            />
+          </svg>
+          {gettext("Answered")}
+        </span>
       </header>
 
       <button
@@ -282,4 +301,7 @@ defmodule ClaperWeb.EventLive.PostComponent do
   end
 
   defp pinned?(post), do: post.pinned
+
+  defp answered?(%{answered: true}), do: true
+  defp answered?(_post), do: false
 end

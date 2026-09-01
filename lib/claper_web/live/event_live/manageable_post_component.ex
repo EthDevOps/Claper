@@ -12,6 +12,7 @@ defmodule ClaperWeb.EventLive.ManageablePostComponent do
       |> assign_new(:readonly, fn -> false end)
       |> assign(:avatar_color, avatar_color(assigns.post))
       |> assign(:avatar_emoji, avatar_emoji(assigns.post))
+      |> assign(:question?, ClaperWeb.Helpers.body_without_links(assigns.post.body) =~ "?")
 
     ~H"""
     <div
@@ -73,6 +74,34 @@ defmodule ClaperWeb.EventLive.ManageablePostComponent do
                   <path d="M9 4v6l-2 4v2h10v-2l-2 -4v-6" />
                   <path d="M12 16l0 5" />
                   <path d="M8 4l8 0" />
+                </svg>
+              </button>
+            </div>
+            <div
+              :if={@question?}
+              class="tooltip tooltip-bottom"
+              data-tip={if @post.answered, do: gettext("Unanswer"), else: gettext("Mark answered")}
+            >
+              <button
+                class="flex items-center justify-center w-8 h-6"
+                phx-click="answered"
+                phx-value-id={@post.uuid}
+                phx-value-event_id={@event.uuid}
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="24"
+                  height="24"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  class={"icon icon-tabler icons-tabler-outline icon-tabler-check size-4 #{if @post.answered, do: "text-gray-400", else: "text-green-600"}"}
+                >
+                  <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+                  <path d="M5 12l5 5l10 -10" />
                 </svg>
               </button>
             </div>
@@ -169,7 +198,7 @@ defmodule ClaperWeb.EventLive.ManageablePostComponent do
         </div>
         
     <!-- Message bubble with tail -->
-        <% is_question = ClaperWeb.Helpers.body_without_links(@post.body) =~ "?" %>
+        <% is_question = @question? %>
         <% bubble_bg =
           cond do
             @post.pinned && is_question ->
@@ -221,6 +250,24 @@ defmodule ClaperWeb.EventLive.ManageablePostComponent do
                 />
               </svg>
               <span :if={is_question} class="text-2xl text-white leading-none">?</span>
+            </div>
+            <div
+              :if={is_question && @post.answered}
+              class="inline-flex items-center space-x-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-500 text-white mb-1"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+                class="w-3.5 h-3.5"
+              >
+                <path
+                  fill-rule="evenodd"
+                  d="M16.704 4.153a.75.75 0 0 1 .143 1.052l-8 10.5a.75.75 0 0 1-1.127.075l-4.5-4.5a.75.75 0 0 1 1.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 0 1 1.05-.143Z"
+                  clip-rule="evenodd"
+                />
+              </svg>
+              <span>{gettext("Answered")}</span>
             </div>
             <p class="text-sm text-gray-700 break-words relative">
               {ClaperWeb.Helpers.format_body(@post.body)}

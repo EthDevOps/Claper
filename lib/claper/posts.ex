@@ -32,7 +32,10 @@ defmodule Claper.Posts do
     query =
       from(p in Post,
         join: e in assoc(p, :event),
-        where: e.uuid == ^event_id and like(p.body, "%?%")
+        where:
+          e.uuid == ^event_id and
+            like(p.body, "%?%") and
+            p.answered == false
       )
 
     query =
@@ -42,6 +45,19 @@ defmodule Claper.Posts do
       end
 
     query
+    |> Repo.all()
+    |> Repo.preload(preload)
+  end
+
+  @doc """
+  Get event posts which are questions and have been marked as answered.
+  """
+  def list_answered_questions(event_id, preload \\ []) do
+    from(p in Post,
+      join: e in assoc(p, :event),
+      where: e.uuid == ^event_id and like(p.body, "%?%") and p.answered == true,
+      order_by: [desc: p.updated_at]
+    )
     |> Repo.all()
     |> Repo.preload(preload)
   end
@@ -204,6 +220,17 @@ defmodule Claper.Posts do
       end
 
     result |> broadcast(broadcast_message)
+  end
+
+  @doc """
+  Marks a post as answered or un-answered.
+  """
+  def toggle_answered_post(%Post{} = post) do
+    new_answered_state = not post.answered
+
+    Post.changeset(post, %{answered: new_answered_state})
+    |> Repo.update()
+    |> broadcast(if new_answered_state, do: :post_answered, else: :post_unanswered)
   end
 
   @doc """

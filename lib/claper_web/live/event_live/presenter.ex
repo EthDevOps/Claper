@@ -135,6 +135,22 @@ defmodule ClaperWeb.EventLive.Presenter do
   end
 
   @impl true
+  def handle_info({:post_answered, updated_post}, socket) do
+    {:noreply,
+     socket
+     |> assign(:posts, update_post_in_list(socket.assigns.posts, updated_post))
+     |> assign(:pinned_posts, update_post_in_list(socket.assigns.pinned_posts, updated_post))}
+  end
+
+  @impl true
+  def handle_info({:post_unanswered, updated_post}, socket) do
+    {:noreply,
+     socket
+     |> assign(:posts, update_post_in_list(socket.assigns.posts, updated_post))
+     |> assign(:pinned_posts, update_post_in_list(socket.assigns.pinned_posts, updated_post))}
+  end
+
+  @impl true
   def handle_info({:post_deleted, post}, socket) do
     updated_posts = Enum.reject(socket.assigns.posts, fn p -> p.id == post.id end)
     updated_pinned_posts = Enum.reject(socket.assigns.pinned_posts, fn p -> p.id == post.id end)

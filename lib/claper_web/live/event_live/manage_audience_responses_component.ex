@@ -55,6 +55,15 @@ defmodule ClaperWeb.EventLive.ManageAudienceResponsesComponent do
         <li>
           <button
             phx-click="list-tab"
+            phx-value-tab="answered_questions"
+            class={"px-3 py-1.5 rounded-full text-sm font-medium transition-colors #{if @list_tab == :answered_questions, do: "bg-secondary-500 text-white", else: "text-gray-600 hover:bg-gray-100"}"}
+          >
+            {gettext("Answered")} ({@answered_question_count})
+          </button>
+        </li>
+        <li>
+          <button
+            phx-click="list-tab"
             phx-value-tab="pinned_posts"
             class={"px-3 py-1.5 rounded-full text-sm font-medium transition-colors #{if @list_tab == :pinned_posts, do: "bg-secondary-500 text-white", else: "text-gray-600 hover:bg-gray-100"}"}
           >
@@ -165,6 +174,39 @@ defmodule ClaperWeb.EventLive.ManageAudienceResponsesComponent do
                 post={post}
               />
             </div>
+          </div>
+        <% end %>
+
+        <%= if @list_tab == :answered_questions do %>
+          <div
+            :if={@answered_question_count == 0}
+            class="h-full flex flex-col items-center justify-center text-gray-400 py-8"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke-width="1.5"
+              stroke="currentColor"
+              class="w-12 h-12 mb-3"
+            >
+              <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+            </svg>
+            <p class="text-sm">{gettext("Answered questions will appear here.")}</p>
+          </div>
+          <div
+            :if={@answered_question_count > 0}
+            id="answered-question-list"
+            class="p-2 space-y-3"
+            phx-update="stream"
+          >
+            <.live_component
+              :for={{id, post} <- @streams.answered_questions}
+              module={ClaperWeb.EventLive.ManageablePostComponent}
+              id={id}
+              event={@event}
+              post={post}
+            />
           </div>
         <% end %>
 
