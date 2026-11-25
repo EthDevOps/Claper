@@ -1,0 +1,32 @@
+name: Docker
+
+# Shared EthDevOps workflow: pushes docker.ethquokkaops.io/ethquokkaops/ethdevops/claper.
+# Tags: branch ref, latest (main), semver from v* tags. Multi-arch; ERL_FLAGS works
+# around a qemu segfault in the Erlang builder (see erlang/otp#6340).
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main", "dev"]
+    tags: ["v*"]
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  call-docker-build:
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+    uses: EthDevOps/workflows/.github/workflows/basic-docker-build-openbao.yaml@main
+    with:
+      bao_role: ethquokkaops-claper-ci
+      bao_secret_path: secret/ethquokkaops/data/docker-registry/production/credentials/ethquokkaops/robot-claper
+      platforms: linux/amd64,linux/arm64
+      build_args: 'ERL_FLAGS=+JPperf true'
+      tags: |
+        type=ref,event=branch
+        type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+        type=semver,pattern={{version}}
+        type=semver,pattern={{major}}.{{minor}}
+        type=semver,pattern={{major}}
