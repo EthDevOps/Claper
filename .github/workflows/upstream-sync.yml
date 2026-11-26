@@ -1,0 +1,131 @@
+name: Upstream sync
+
+# Daily: when ClaperCo/Claper has a release dev doesn't contain yet, replay the
+# fork's patch stack onto it, test it, push sync/<tag> and build its image
+# (tag sync-<tag>). dev itself is never touched; the cutover stays manual.
+# Conflicts or test failures fail the run (GitHub notifies) and it retries
+# daily until sync/<tag> exists.
+
+on:
+  schedule:
+    - cron: "17 5 * * *"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Upstream tag to sync (default: latest release)"
+        required: false
+
+permissions:
+  contents: read
+  actions: write
+
+concurrency: upstream-sync
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    services:
+      db:
+        image: postgres:15
+        ports: ["5432:5432"]
+        env:
+          POSTGRES_PASSWORD: claper
+          POSTGRES_USER: claper
+          POSTGRES_DB: claper
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      MIX_ENV: test
+      DATABASE_URL: postgresql://claper:claper@localhost:5432/claper
+      SECRET_KEY_BASE: QMQE4ypfy0IC1LZI/fygZNvXHPjLslnr49EE7ftcL1wgAC0MwMLdKCVJyrvXPu8z
+      BASE_URL: http://localhost:4000
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: dev
+          fetch-depth: 0
+          # The built-in token can't push commits that touch .github/workflows.
+          token: ${{ secrets.SYNC_PUSH_TOKEN }}
+
+      - name: Find unsynced upstream release
+        id: find
+        env:
+          INPUT_TAG: ${{ inputs.tag }}
+        run: |
+          git remote add upstream https://github.com/ClaperCo/Claper.git
+          git fetch -q upstream dev main
+          git fetch -q upstream 'refs/tags/v*:refs/tags/v*' --force
+
+          tag="${INPUT_TAG:-$(git tag -l 'v*' --sort=-v:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | head -1)}"
+          branch="sync/$tag"
+          # Releases merge upstream dev into main; dev already has the release
+          # when it contains the tag's dev side (or the tag itself).
+          side=$(git rev-parse -q --verify "$tag^2" || git rev-parse "$tag")
+
+          if git merge-base --is-ancestor "$side" origin/dev; then
+            echo "dev already contains $tag"
+          elif git ls-remote --exit-code --heads origin "$branch" >/dev/null; then
+            echo "$branch already exists"
+          else
+            echo "new=true" >> "$GITHUB_OUTPUT"
+          fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "branch=$branch" >> "$GITHUB_OUTPUT"
+
+      - name: Replay patch stack
+        if: steps.find.outputs.new
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          stack=$(git rev-list --reverse --no-merges origin/dev ^upstream/dev ^upstream/main)
+          git log --oneline --no-walk=unsorted $stack
+          git checkout -b "${{ steps.find.outputs.branch }}" "${{ steps.find.outputs.tag }}"
+          git cherry-pick --empty=drop $stack || {
+            git status --short | grep -E '^(UU|AA|DU|UD)' > conflicts.txt
+            git log -1 --format='%h %s' CHERRY_PICK_HEAD > conflict-commit.txt
+            exit 1
+          }
+
+      - uses: erlef/setup-beam@v1
+        if: steps.find.outputs.new
+        with:
+          elixir-version: "1.18.4"
+          otp-version: "28"
+
+      - uses: actions/cache@v4
+        if: steps.find.outputs.new
+        with:
+          path: deps
+          key: ${{ runner.os }}-mix-${{ hashFiles('**/mix.lock') }}
+          restore-keys: ${{ runner.os }}-mix-
+
+      - name: Test
+        if: steps.find.outputs.new
+        run: |
+          mix deps.get
+          mix compile
+          mix test
+
+      - name: Push branch and build image
+        if: steps.find.outputs.new
+        run: |
+          git push origin "${{ steps.find.outputs.branch }}"
+          GH_TOKEN=${{ github.token }} gh workflow run Docker --ref "${{ steps.find.outputs.branch }}"
+
+      - name: Report conflict
+        if: failure() && steps.find.outputs.new
+        run: |
+          {
+            echo "### Sync onto upstream \`${{ steps.find.outputs.tag }}\` failed"
+            if [ -s conflict-commit.txt ]; then
+              echo "Patch \`$(cat conflict-commit.txt)\` conflicts in:"
+              sed 's/^.. /- `/; s/$/`/' conflicts.txt
+            fi
+            echo
+            echo "Redo it by hand: branch from the tag, cherry-pick \`git rev-list --reverse --no-merges origin/dev ^upstream/dev ^upstream/main\`, fix, push \`${{ steps.find.outputs.branch }}\`."
+          } >> "$GITHUB_STEP_SUMMARY"
